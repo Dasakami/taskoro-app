@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   // Main colors
+  static const Color cardBackground = Color(0xFF1E1E2C); // Пример красивого тёмного цвета
   static const background = Color(0xFF0A0A13);
   static const backgroundSecondary = Color(0xFF12122A);
   static const textPrimary = Color(0xFFE0E0FF);
@@ -22,6 +23,7 @@ class AppColors {
 }
 
 class AppTheme {
+
   static final darkTheme = ThemeData.dark().copyWith(
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: const ColorScheme.dark(

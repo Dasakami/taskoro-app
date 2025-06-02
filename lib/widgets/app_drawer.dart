@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taskoro/providers/user_provider.dart';
-import 'package:taskoro/screens/base_task_screen.dart';
+import 'package:taskoro/screens/friends/friends_screen.dart';
+import 'package:taskoro/screens/history_screen.dart';
 import 'package:taskoro/screens/profile_screen.dart';
 import 'package:taskoro/screens/settings_screen.dart';
-import 'package:taskoro/screens/tournaments_screen.dart';
+import 'package:taskoro/screens/shop/chests_screen.dart';
+import 'package:taskoro/screens/shop/inventory_screen.dart';
+import 'package:taskoro/screens/shop/shop_home_screen.dart';
 import 'package:taskoro/theme/app_theme.dart';
 
 import '../screens/achivements_screen.dart';
-import '../screens/duels_screen.dart';
-import '../screens/friends_screen.dart';
-import '../screens/notes_screen.dart';
-import '../screens/tasks_screen.dart';
+import '../screens/notes/notes_screen.dart';
+import '../screens/tasks/tasks_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   final void Function(Widget screen, String title) onNavigate;
@@ -58,7 +59,10 @@ class AppDrawer extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(30),
                           child: user.avatarUrl != null
-                              ? Image.network(user.avatarUrl!, fit: BoxFit.cover)
+                              ? Image.network(
+                                  user.avatarUrl!,
+                                  fit: BoxFit.cover,
+                                )
                               : Container(
                                   color: Colors.grey.shade800,
                                   child: const Icon(
@@ -126,6 +130,12 @@ class AppDrawer extends StatelessWidget {
           ),
           _buildDrawerItem(
             context,
+            icon: Icons.people_alt,
+            title: 'Друзья',
+            onTap: () => onNavigate(const FriendsScreen(), 'Друзья'),
+          ),
+          _buildDrawerItem(
+            context,
             icon: Icons.military_tech,
             title: 'Достижения',
             onTap: () => onNavigate(const AchievementsScreen(), 'Достижения'),
@@ -135,13 +145,25 @@ class AppDrawer extends StatelessWidget {
             context,
             icon: Icons.shopping_cart,
             title: 'Магазин',
-            onTap: () => Navigator.pop(context),
+            onTap: () => onNavigate(const ShopHomeScreen(), 'Магазин'),
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.shopping_cart,
+            title: 'Инвентарь',
+            onTap: () => onNavigate(const InventoryScreen(), 'Инвентарь'),
+          ),
+          _buildDrawerItem(
+            context,
+            icon: Icons.shopping_cart,
+            title: 'Сундуки',
+            onTap: () => onNavigate(const ChestsScreen(), 'Сундуки'),
           ),
           _buildDrawerItem(
             context,
             icon: Icons.history,
             title: 'История',
-            onTap: () => Navigator.pop(context),
+            onTap: () => onNavigate(const HistoryScreen(), 'История'),
           ),
           _buildDrawerItem(
             context,
@@ -154,12 +176,6 @@ class AppDrawer extends StatelessWidget {
             icon: Icons.settings,
             title: 'Настройки',
             onTap: () => onNavigate(const SettingsScreen(), 'Настройки'),
-          ),
-          _buildDrawerItem(
-            context,
-            icon: Icons.person_outline,
-            title: 'Базовые задачи',
-            onTap: () => onNavigate(const BaseTaskScreen(), 'Базовые задачи'),
           ),
 
           const Divider(color: AppColors.border),

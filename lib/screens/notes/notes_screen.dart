@@ -4,6 +4,9 @@ import 'package:taskoro/providers/notes_provider.dart';
 import 'package:taskoro/theme/app_theme.dart';
 import 'package:taskoro/widgets/magic_card.dart';
 
+import 'deleted_notes_screen.dart';
+import 'note_form_screen.dart';
+
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
 
@@ -25,14 +28,23 @@ class _NotesScreenState extends State<NotesScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: const Text('Заметки'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DeletedNotesScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'Заметки',
-            style: Theme.of(context).textTheme.displaySmall,
-          ),
-          const SizedBox(height: 16),
           notes.isEmpty
               ? const Center(child: Text('Нет заметок'))
               : GridView.builder(
@@ -74,7 +86,18 @@ class _NotesScreenState extends State<NotesScreen> {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.edit),
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => NoteFormScreen(
+                                    noteId: note.id,
+                                    initialTitle: note.title,
+                                    initialContent: note.content,
+                                  ),
+                                ),
+                              );
+                            },
                             color: AppColors.accentPrimary,
                           ),
                           IconButton(
@@ -98,11 +121,15 @@ class _NotesScreenState extends State<NotesScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NoteFormScreen()),
+          );
         },
         backgroundColor: AppColors.accentPrimary,
         child: const Icon(Icons.add),
       ),
     );
+
   }
 }

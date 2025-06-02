@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:taskoro/screens/privacy_policy_page.dart';
+import 'package:taskoro/screens/main/privacy_policy_page.dart';
 import 'package:taskoro/theme/app_theme.dart';
 import 'package:taskoro/widgets/magic_card.dart';
 

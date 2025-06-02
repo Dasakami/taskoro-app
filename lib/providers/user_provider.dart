@@ -33,7 +33,7 @@ class UserProvider extends ChangeNotifier {
 
   /// Логин с сервера
   Future<void> login(String username, String password) async {
-    final url = Uri.parse('https://taskoro.onrender.com/api/token/');
+    final url = Uri.parse('http://192.168.1.64:8000/api/token/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -53,12 +53,18 @@ class UserProvider extends ChangeNotifier {
     } else {
       throw Exception(data['detail'] ?? 'Ошибка авторизации');
     }
+
+    if (response.statusCode == 401) {
+      await refreshAccessToken();
+      return fetchUserProfile(); // повторная попытка
+    }
+
   }
 
   Future<void> fetchUserProfile() async {
     if (_accessToken == null) return;
 
-    final url = Uri.parse('https://taskoro.onrender.com/api/users/me/');
+    final url = Uri.parse('http://192.168.1.64:8000/api/users/me/');
     final response = await http.get(
       url,
       headers: {
@@ -79,7 +85,7 @@ class UserProvider extends ChangeNotifier {
 
   /// Регистрация
   Future<void> register(String username, String password) async {
-    final url = Uri.parse('https://taskoro.onrender.com/api/auth/users/');
+    final url = Uri.parse('http://192.168.1.64:8000/api/auth/users/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -152,7 +158,7 @@ class UserProvider extends ChangeNotifier {
   }) async {
     if (_accessToken == null) throw Exception('User not authenticated');
 
-    final url = Uri.parse('https://taskoro.onrender.com/api/users/me/edit/');
+    final url = Uri.parse('http://192.168.1.64:8000/api/users/me/edit/');
 
     http.Response response;
 
@@ -202,6 +208,29 @@ class UserProvider extends ChangeNotifier {
       throw Exception('Ошибка обновления профиля: $data');
     }
   }
+
+  Future<void> refreshAccessToken() async {
+    if (_refreshToken == null) return;
+
+    final url = Uri.parse('http://192.168.1.64:8000/api/token/refresh/');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refresh': _refreshToken}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      _accessToken = data['access'];
+      notifyListeners();
+    } else {
+      logout(); // refresh невалиден — выходим из аккаунта
+      throw Exception('Ошибка обновления токена');
+    }
+  }
+
 }
+
+
 
 

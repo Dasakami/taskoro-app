@@ -92,7 +92,7 @@ class TaskListItem extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                    task.formattedCreatedDate,
+                    task.createdAt.toString(),
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,

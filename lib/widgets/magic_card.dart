@@ -8,6 +8,7 @@ class MagicCard extends StatelessWidget {
   final bool glowEffect;
   final bool useGradientBorder;
   final Color? color;  // новый параметр для цвета фона
+  final VoidCallback? onTap;
 
   const MagicCard({
     super.key,
@@ -17,6 +18,7 @@ class MagicCard extends StatelessWidget {
     this.glowEffect = true,
     this.useGradientBorder = false,
     this.color,  // добавляем в конструктор
+    this.onTap,
   });
 
   @override

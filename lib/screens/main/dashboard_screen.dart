@@ -4,8 +4,8 @@ import 'package:percent_indicator/percent_indicator.dart';
 import 'package:taskoro/providers/tasks_provider.dart';
 import 'package:taskoro/theme/app_theme.dart';
 import 'package:taskoro/widgets/magic_card.dart';
-import '../providers/user_provider.dart';
-import '../widgets/task_list_item.dart';
+import '../../providers/user_provider.dart';
+import '../../widgets/task_list_item.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -206,16 +206,16 @@ class DashboardScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '"${tasksProvider.dailyMotivation!.text}"',
+                                '"${tasksProvider.dailyMotivation!}"',
                                 style: const TextStyle(
                                   color: AppColors.textPrimary,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              if (tasksProvider.dailyMotivation!.author != null)
+                              if (tasksProvider.dailyMotivation != null)
                                 Text(
-                                  '— ${tasksProvider.dailyMotivation!.author}',
+                                  '— ${tasksProvider.dailyMotivation!}',
                                   style: const TextStyle(
                                     color: AppColors.accentSecondary,
                                     fontSize: 12,
@@ -265,7 +265,7 @@ class DashboardScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Сегодня: ${tasksProvider.completedTasksToday.length}',
+                          'Сегодня: ${tasksProvider.completedTasksToday}',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -312,7 +312,7 @@ class DashboardScreen extends StatelessWidget {
                       onToggle: () {
                         final token = userProvider.accessToken;
                         if (token != null) {
-                          tasksProvider.toggleTaskComplete(task.id);
+                          tasksProvider.toggleTaskStatus(task);
                         } else {
                           print('No token found');
                         }
