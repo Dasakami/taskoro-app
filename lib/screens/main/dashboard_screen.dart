@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-import 'package:taskoro/providers/tasks_provider.dart';
 import 'package:taskoro/theme/app_theme.dart';
 import 'package:taskoro/widgets/magic_card.dart';
+import '../../providers/tasks_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/task_list_item.dart';
 
@@ -131,8 +131,7 @@ class DashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Daily Mission Card
-          if (tasksProvider.dailyMission != null)
+          if (userProvider.dailyMission != null)
             MagicCard(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -146,7 +145,7 @@ class DashboardScreen extends StatelessWidget {
                     const Divider(),
                     const SizedBox(height: 8),
                     Text(
-                      tasksProvider.dailyMission!.title,
+                      userProvider.dailyMission!.title,
                       style: const TextStyle(
                         color: AppColors.accentPrimary,
                         fontSize: 18,
@@ -155,7 +154,7 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      tasksProvider.dailyMission!.description,
+                      userProvider.dailyMission!.description,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                       ),
@@ -165,19 +164,21 @@ class DashboardScreen extends StatelessWidget {
                       children: [
                         _buildRewardItem(
                           icon: '⭐',
-                          value: '${tasksProvider.dailyMission!.experienceReward} XP',
+                          value: '${userProvider.dailyMission!.experienceReward} XP',
                         ),
                         const SizedBox(width: 16),
                         _buildRewardItem(
                           icon: '💰',
-                          value: tasksProvider.dailyMission!.coinsReward.toString(),
+                          value: userProvider.dailyMission!.coinsReward.toString(),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-            ),
+            )
+          else
+            Center(child: Text("Миссия на сегодня не загружена")),
 
           const SizedBox(height: 24),
 
@@ -201,28 +202,28 @@ class DashboardScreen extends StatelessWidget {
                         ),
                         const Divider(),
                         const SizedBox(height: 8),
-                        if (tasksProvider.dailyMotivation != null)
+                        if (userProvider.dailyMotivation != null)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                '"${tasksProvider.dailyMotivation!}"',
+                                '"${userProvider.dailyMotivation!.text}"',
                                 style: const TextStyle(
                                   color: AppColors.textPrimary,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              if (tasksProvider.dailyMotivation != null)
-                                Text(
-                                  '— ${tasksProvider.dailyMotivation!}',
-                                  style: const TextStyle(
-                                    color: AppColors.accentSecondary,
-                                    fontSize: 12,
-                                  ),
+                              Text(
+                                '— ${userProvider.dailyMotivation!.author}',
+                                style: const TextStyle(
+                                  color: AppColors.accentSecondary,
+                                  fontSize: 12,
                                 ),
+                              ),
                             ],
                           ),
+
                       ],
                     ),
                   ),
@@ -265,7 +266,7 @@ class DashboardScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Сегодня: ${tasksProvider.completedTasksToday}',
+                          'Сегодня: ${tasksProvider.completedTasksToday.length}',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,

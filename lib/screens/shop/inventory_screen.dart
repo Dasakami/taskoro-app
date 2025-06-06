@@ -111,9 +111,9 @@ class _InventoryScreenState extends State<InventoryScreen> with TickerProviderSt
                 ),
               ),
 
-            if (inventoryItem.item.type == ItemType.avatar ||
-                inventoryItem.item.type == ItemType.theme ||
-                inventoryItem.item.type == ItemType.decoration)
+            if (inventoryItem.item.type == ItemType.avatar_frame ||
+                inventoryItem.item.type == ItemType.title ||
+                inventoryItem.item.type == ItemType.background)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -429,16 +429,19 @@ class _InventoryScreenState extends State<InventoryScreen> with TickerProviderSt
   Widget _buildItemIcon(ShopItem item) {
     IconData icon;
     switch (item.type) {
-      case ItemType.avatar:
+      case ItemType.avatar_frame:
         icon = Icons.person;
         break;
       case ItemType.boost:
         icon = Icons.flash_on;
         break;
-      case ItemType.decoration:
+        case ItemType.effect:
+        icon = Icons.flash_auto;
+        break;
+      case ItemType.background:
         icon = Icons.palette;
         break;
-      case ItemType.theme:
+      case ItemType.title:
         icon = Icons.color_lens;
         break;
       case ItemType.equipment:
@@ -457,14 +460,16 @@ class _InventoryScreenState extends State<InventoryScreen> with TickerProviderSt
 
   String _getTypeName(ItemType type) {
     switch (type) {
-      case ItemType.avatar:
+      case ItemType.avatar_frame:
         return 'Аватары';
       case ItemType.boost:
         return 'Усиления';
-      case ItemType.decoration:
+      case ItemType.background:
         return 'Декорации';
-      case ItemType.theme:
+      case ItemType.title:
         return 'Темы';
+        case ItemType.effect:
+        return 'Эффекты';
       case ItemType.equipment:
         return 'Снаряжение';
     }

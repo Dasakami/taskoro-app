@@ -237,16 +237,20 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> with TickerProvider
   Widget _buildItemIcon() {
     IconData icon;
     switch (widget.item.type) {
-      case ItemType.avatar:
+      case ItemType.avatar_frame:
         icon = Icons.person;
         break;
+
       case ItemType.boost:
         icon = Icons.flash_on;
         break;
-      case ItemType.decoration:
+      case ItemType.effect:
+          icon = Icons.lightbulb;
+        break;
+      case ItemType.background:
         icon = Icons.palette;
         break;
-      case ItemType.theme:
+      case ItemType.title:
         icon = Icons.color_lens;
         break;
       case ItemType.equipment:

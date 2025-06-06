@@ -14,52 +14,85 @@ class Friend {
   });
 
   factory Friend.fromJson(Map<String, dynamic> json) {
-    // Проверяем разные возможные структуры данных
-    if (json.containsKey('friend_profile')) {
-      final profile = json['friend_profile'] ?? {};
+    final profile = json['friend_profile'] as Map<String, dynamic>?;
+
+    if (profile != null) {
+      final user = profile['user'];
+      String username = user is String ? user : 'Unknown';
+      String? avatar = profile['avatar'] as String?;
+
       return Friend(
-        id: json['id'] ?? 0,
-        username: profile['user'] ?? 'Unknown',
-        avatarUrl: profile['avatar'],
-        level: profile['level'] ?? 1,
-        experience: profile['experience'] ?? 0,
-      );
-    } else {
-      // Обычная структура для друзей
-      return Friend(
-        id: json['id'] ?? 0,
-        username: json['username'] ?? 'Unknown',
-        avatarUrl: json['avatar_url'] ?? json['avatar'], // на всякий случай
-        level: json['level'] ?? 1,
-        experience: json['experience'] ?? 0,
+        id: json['id'] as int? ?? 0,
+        username: username,
+        avatarUrl: avatar,
+        level: profile['level'] as int? ?? 1,
+        experience: profile['experience'] as int? ?? 0,
       );
     }
+
+    // fallback
+    return Friend(
+      id: json['id'] as int? ?? 0,
+      username: json['username'] as String? ?? 'Unknown',
+      avatarUrl: json['avatar_url'] as String? ?? json['avatar'] as String?,
+      level: json['level'] as int? ?? 1,
+      experience: json['experience'] as int? ?? 0,
+    );
   }
 }
 
 class FriendRequest {
   final int id;
+  final int userId;
   final String username;
   final String? avatarUrl;
   final int level;
 
   FriendRequest({
     required this.id,
+    required this.userId,
     required this.username,
     this.avatarUrl,
     required this.level,
   });
 
-  // isReceived = true — это входящий запрос, тогда юзер в sender
-  // isReceived = false — исходящий запрос, тогда юзер в receiver
   factory FriendRequest.fromJson(Map<String, dynamic> json, {required bool isReceived}) {
-    final userData = isReceived ? json['sender'] : json['receiver'];
+    final key = isReceived ? 'sender' : 'receiver';
+    final container = json[key] as Map<String, dynamic>?;
+
+    String username = 'Unknown';
+    String? avatar;
+    int userId = 0;
+    int level = 1;
+
+    if (container != null) {
+      final user = container['user'];
+      username = user is String ? user : 'Unknown';
+      avatar = container['avatar'] as String?;
+      userId = container['id'] as int? ?? 0;
+      level = container['level'] as int? ?? 1;
+    }
 
     return FriendRequest(
-      id: json['id'],
-      username: userData['username'] ?? 'Unknown',
-      avatarUrl: userData['avatar'],
-      level: userData['level'] ?? 1,
+      id: json['id'] as int? ?? 0,
+      userId: userId,
+      username: username,
+      avatarUrl: avatar,
+      level: level,
+    );
+  }
+
+  FriendRequest copyWith({
+    String? username,
+    String? avatarUrl,
+    int? level,
+  }) {
+    return FriendRequest(
+      id: id,
+      userId: userId,
+      username: username ?? this.username,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      level: level ?? this.level,
     );
   }
 }

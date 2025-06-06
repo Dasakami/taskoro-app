@@ -77,12 +77,16 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
 
   Future<void> _completeTask(TaskModel task) async {
     final provider = Provider.of<TasksProvider>(context, listen: false);
-    await provider.toggleTaskStatus(task);
+    // Используем API endpoint /complete/ для завершения задачи:
+    final updatedTask = await provider.completeTaskById(task.id!);
 
-    if (!task.isCompleted) {
-      _showCompletionDialog(task);
+    if (updatedTask != null && updatedTask.isCompleted) {
+      _showCompletionDialog(updatedTask);
+    } else {
+      debugPrint("Задача не была помечена выполненной или произошла ошибка");
     }
   }
+
 
   void _showCompletionDialog(TaskModel task) {
     showDialog(

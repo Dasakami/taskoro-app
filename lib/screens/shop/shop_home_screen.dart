@@ -325,10 +325,10 @@ class _ShopHomeScreenState extends State<ShopHomeScreen> {
 
   Widget _buildCategories() {
     final categories = [
-      {'type': ItemType.avatar, 'icon': Icons.person, 'name': 'Аватары'},
+      {'type': ItemType.avatar_frame, 'icon': Icons.person, 'name': 'Рамки автара'},
       {'type': ItemType.boost, 'icon': Icons.flash_on, 'name': 'Усиления'},
-      {'type': ItemType.decoration, 'icon': Icons.palette, 'name': 'Декорации'},
-      {'type': ItemType.theme, 'icon': Icons.color_lens, 'name': 'Темы'},
+      {'type': ItemType.background, 'icon': Icons.palette, 'name': 'Задний фон'},
+      {'type': ItemType.title, 'icon': Icons.color_lens, 'name': 'Титулы'},
     ];
 
     return GridView.builder(
@@ -512,17 +512,20 @@ class _ShopHomeScreenState extends State<ShopHomeScreen> {
   Widget _buildItemIcon(ShopItem item) {
     IconData icon;
     switch (item.type) {
-      case ItemType.avatar:
+      case ItemType.avatar_frame:
         icon = Icons.person;
         break;
       case ItemType.boost:
         icon = Icons.flash_on;
         break;
-      case ItemType.decoration:
+      case ItemType.background:
         icon = Icons.palette;
         break;
-      case ItemType.theme:
+      case ItemType.title:
         icon = Icons.color_lens;
+        break;
+        case ItemType.effect:
+        icon = Icons.lightbulb;
         break;
       case ItemType.equipment:
         icon = Icons.build;
@@ -538,3 +541,4 @@ class _ShopHomeScreenState extends State<ShopHomeScreen> {
     );
   }
 }
+

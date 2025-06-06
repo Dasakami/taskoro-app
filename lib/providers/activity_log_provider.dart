@@ -9,7 +9,7 @@ class ActivityLogProvider extends ChangeNotifier {
   String selectedType = '';
 
   Future<void> fetchLogs(String token, {String type = ''}) async {
-    final url = Uri.parse('http://192.168.1.64:8000/api/history/activity-log/?type=$type');
+    final url = Uri.parse('http://192.168.232.53:8000/api/history/activity-log/?type=$type');
     final response = await http.get(
       url,
       headers: {'Authorization': 'Bearer $token'},

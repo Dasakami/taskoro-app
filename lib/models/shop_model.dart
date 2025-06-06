@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 enum ItemType {
-  avatar,
+  avatar_frame,
+  title,
   boost,
-  decoration,
-  theme,
+  background,
+  effect,
   equipment,
 }
 
@@ -86,14 +87,16 @@ class ShopItem {
 
   String get typeName {
     switch (type) {
-      case ItemType.avatar:
-        return 'Аватар';
+      case ItemType.avatar_frame:
+        return 'Рамка аватара';
       case ItemType.boost:
         return 'Усиление';
-      case ItemType.decoration:
-        return 'Декорация';
-      case ItemType.theme:
-        return 'Тема';
+      case ItemType.background:
+        return 'Фон профиля';
+      case ItemType.title:
+        return 'Титул';
+        case ItemType.effect:
+        return 'Эффект';
       case ItemType.equipment:
         return 'Снаряжение';
     }
@@ -106,7 +109,7 @@ class ShopItem {
       description: json['description'] ?? '',
       price: json['price'] ?? 0,
       currency: json['currency'] ?? 'coins',
-      type: _itemTypeFromString(json['type'] ?? 'decoration'),
+      type: _itemTypeFromString(json['type'] ?? 'background'),
       rarity: _itemRarityFromString(json['rarity'] ?? 'common'),
       imageUrl: json['image_url'],
       isAvailable: json['is_available'] ?? true,
@@ -137,18 +140,18 @@ class ShopItem {
 
   static ItemType _itemTypeFromString(String type) {
     switch (type.toLowerCase()) {
-      case 'avatar':
-        return ItemType.avatar;
+      case 'avatar_frame':
+        return ItemType.avatar_frame;
       case 'boost':
         return ItemType.boost;
-      case 'decoration':
-        return ItemType.decoration;
-      case 'theme':
-        return ItemType.theme;
+      case 'background':
+        return ItemType.background;
+      case 'title':
+        return ItemType.title;
       case 'equipment':
         return ItemType.equipment;
       default:
-        return ItemType.decoration;
+        return ItemType.background;
     }
   }
 
@@ -174,21 +177,31 @@ class Chest {
   final int id;
   final String name;
   final String description;
-  final int price;
+  final int price_coins;
+  final int price_gems;
   final String currency;
   final String? imageUrl;
   final List<ChestReward> possibleRewards;
   final bool isAvailable;
+  final int min_coins_reward;
+  final int max_coins_reward;
+  final int min_gems_reward;
+  final int max_gems_reward;
 
   Chest({
     required this.id,
     required this.name,
     required this.description,
-    required this.price,
+    required this.price_coins,
+    required this.price_gems,
     required this.currency,
     this.imageUrl,
     required this.possibleRewards,
     this.isAvailable = true,
+    required this.min_coins_reward,
+    required this.max_coins_reward,
+    required this.min_gems_reward,
+    required this.max_gems_reward,
   });
 
   factory Chest.fromJson(Map<String, dynamic> json) {
@@ -196,13 +209,18 @@ class Chest {
       id: json['id'],
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      price: json['price'] ?? 0,
+      price_coins: json['price'] ?? 0,
+      price_gems: json['price'] ?? 0,
       currency: json['currency'] ?? 'coins',
       imageUrl: json['image_url'],
       possibleRewards: (json['possible_rewards'] as List? ?? [])
           .map((e) => ChestReward.fromJson(e))
           .toList(),
       isAvailable: json['is_available'] ?? true,
+      min_coins_reward: json['min_coins_reward'] ?? 0,
+      max_coins_reward: json['max_coins_reward'] ?? 0,
+      min_gems_reward: json['min_gems_reward'] ?? 0,
+      max_gems_reward: json['max_gems_reward'] ?? 0,
     );
   }
 }

@@ -10,25 +10,23 @@ class TasksProvider extends ChangeNotifier {
 
   TasksProvider({
     required this.userProvider,
-    this.baseUrl = 'http://192.168.1.64:8000',
+    this.baseUrl = 'http://192.168.232.53:8000',
   });
 
   List<TaskModel> _tasks = [];
   List<TaskCategory> _categories = [];
   bool _isLoading = false;
   String? _error;
-  DailyMission? _dailyMission;
-  String? _dailyMotivation;
+
 
   // Getters
   List<TaskModel> get tasks => _tasks;
   List<TaskCategory> get categories => _categories;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  DailyMission? get dailyMission => _dailyMission;
-  String? get dailyMotivation => _dailyMotivation;
 
-  // Filtered tasks
+
+  // Отфильтрованные задачи
   List<TaskModel> get recentTasks {
     final sortedTasks = List<TaskModel>.from(_tasks);
     sortedTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -55,7 +53,7 @@ class TasksProvider extends ChangeNotifier {
     return _tasks.where((task) => task.type == type).toList();
   }
 
-  // Helper methods
+  // Вспомогательные методы
   Map<String, String> get _headers {
     final headers = <String, String>{
       'Content-Type': 'application/json',
@@ -135,7 +133,7 @@ class TasksProvider extends ChangeNotifier {
     try {
       final url = Uri.parse('$baseUrl/api/tasks/tasks/');
       final taskData = task.toJson();
-      taskData.remove('id'); // Remove id for creation
+      taskData.remove('id'); // Удаляем id для создания
 
       final response = await http.post(
         url,
@@ -226,39 +224,59 @@ class TasksProvider extends ChangeNotifier {
     }
   }
 
-  Future<TaskModel?> completeTask(TaskModel task) async {
-    return await updateTask(task.copyWith(
-      status: TaskStatus.completed,
-      lastCompleted: DateTime.now(),
-    ));
+  // Новый метод для выполнения задачи по её id
+  Future<TaskModel?> completeTaskById(int taskId) async {
+    if (userProvider.accessToken == null) {
+      _setError('Пользователь не авторизован');
+      debugPrint("completeTaskById: accessToken отсутствует");
+      return null;
+    }
+
+    _setLoading(true);
+    _setError(null);
+
+    try {
+      final url = Uri.parse('$baseUrl/api/tasks/tasks/$taskId/complete/');
+      debugPrint("Вызов API для выполнения задачи: $url");
+
+      final response = await http.post(url, headers: _headers);
+      debugPrint("Статус ответа API: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final updatedTask = TaskModel.fromJson(jsonDecode(response.body));
+        final index = _tasks.indexWhere((task) => task.id == taskId);
+        if (index != -1) {
+          _tasks[index] = updatedTask;
+          notifyListeners();
+        } else {
+          debugPrint("Задача с id $taskId не найдена в локальном списке");
+        }
+        return updatedTask;
+      } else {
+        _setError('Ошибка выполнения задачи: ${response.statusCode}');
+        debugPrint("Тело ответа: ${response.body}");
+        return null;
+      }
+    } catch (e) {
+      _setError('Ошибка сети: $e');
+      debugPrint("Исключение при выполнении задачи: $e");
+      return null;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   Future<TaskModel?> toggleTaskStatus(TaskModel task) async {
-    final newStatus = task.isCompleted ? TaskStatus.notStarted : TaskStatus.completed;
+    final newStatus =
+    task.isCompleted ? TaskStatus.notStarted : TaskStatus.completed;
     return await updateTask(task.copyWith(
       status: newStatus,
       lastCompleted: newStatus == TaskStatus.completed ? DateTime.now() : null,
     ));
   }
 
-  Future<void> fetchDailyMission() async {
-    if (userProvider.accessToken == null) return;
 
-    try {
-      final url = Uri.parse('$baseUrl/api/daily_mission/');
-      final response = await http.get(url, headers: _headers);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _dailyMission = DailyMission.fromJson(data);
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Ошибка загрузки ежедневной миссии: $e');
-    }
-  }
-
-  // Demo data for development
+  // Demo данные для разработки
   void initDemoData() {
     _tasks = [
       TaskModel(
@@ -299,24 +317,15 @@ class TasksProvider extends ChangeNotifier {
       ),
     ];
 
-    _dailyMission = DailyMission(
-      id: 'dm1',
-      title: 'Выполнить 3 задачи',
-      description: 'Заверши три задачи сегодня, чтобы получить награду',
-      experienceReward: 50,
-      coinsReward: 25,
-    );
 
-    _dailyMotivation = 'Сегодня отличный день, чтобы стать лучше!';
+
     notifyListeners();
   }
 
-  // Clear all data
+  // Очистка всех данных
   void clearData() {
     _tasks.clear();
     _categories.clear();
-    _dailyMission = null;
-    _dailyMotivation = null;
     _error = null;
     _isLoading = false;
     notifyListeners();

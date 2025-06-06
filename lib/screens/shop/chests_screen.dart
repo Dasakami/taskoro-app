@@ -50,17 +50,33 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
     setState(() {
       _isOpening = false;
     });
-
+    // Предположим, что success – результат выполнения purchaseChest
     if (mounted) {
       if (success) {
-        _showRewardDialog();
+        final rewards = shopProvider.lastRewards;
+        if (rewards != null && rewards.isNotEmpty) {
+          _showRewardDialog(rewards);
+        } else {
+          // Если награды не пришли, можно показать дефолтное сообщение или награду
+          _showRewardDialog([
+            ChestReward(
+              itemId: 0,
+              itemName: 'Монеты и гемы',
+              rarity: ItemRarity.common,
+              dropChance: 1.0,
+              minQuantity: 100,
+              maxQuantity: 100,
+            )
+          ]);
+        }
       } else {
         _showErrorDialog(shopProvider.error ?? 'Ошибка покупки сундука');
       }
     }
+
   }
 
-  void _showRewardDialog() {
+  void _showRewardDialog(List<ChestReward> rewards) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -94,6 +110,20 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
             ),
             const SizedBox(height: 16),
             const Text('Вы получили награды!'),
+            const SizedBox(height: 8),
+            const Text(
+              'Вы получили следующие предметы:',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            // Построение списка наград динамически
+            ...rewards.map((reward) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Text(
+                '• ${reward.itemName} x${reward.minQuantity}-${reward.maxQuantity} (${reward.rarity.name.toUpperCase()})',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            )),
             const SizedBox(height: 8),
             const Text(
               'Проверьте свой инвентарь',
@@ -152,9 +182,9 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
             ),
             const SizedBox(height: 8),
             if (chest.possibleRewards.isEmpty)
-              const Text(
-                '• Случайные предметы\n• Монеты и гемы\n• Усиления опыта',
-                style: TextStyle(color: AppColors.textSecondary),
+              Text(
+                '• Случайные предметы\n• Алмаз ${chest.min_gems_reward} - ${chest.max_gems_reward}\n• Монет ${chest.min_coins_reward} - ${chest.max_coins_reward}\n ',
+                style: const TextStyle(color: AppColors.textSecondary),
               )
             else
               ...chest.possibleRewards.map((reward) => Padding(
@@ -435,13 +465,13 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          chest.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
+                          chest.currency == 'coins' ? Icons.monetization_on: Icons.diamond,
                           size: 16,
                           color: _getPriceColor(chest),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${chest.price}',
+                          '${chest.price_coins} ',
                           style: TextStyle(
                             color: _getPriceColor(chest),
                             fontWeight: FontWeight.bold,
@@ -505,9 +535,9 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
   }
 
   Color _getChestColor(Chest chest) {
-    if (chest.price >= 200) return Colors.purple; // Легендарный
-    if (chest.price >= 100) return Colors.orange; // Эпический
-    if (chest.price >= 50) return Colors.blue; // Редкий
+    if (chest.price_coins >= 200) return Colors.purple; // Легендарный
+    if (chest.price_coins >= 100) return Colors.orange; // Эпический
+    if (chest.price_coins >= 50) return Colors.blue; // Редкий
     return Colors.grey; // Обычный
   }
 
@@ -515,3 +545,4 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
     return chest.currency == 'coins' ? AppColors.accentPrimary : Colors.purple;
   }
 }
+

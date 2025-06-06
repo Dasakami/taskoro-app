@@ -24,14 +24,16 @@ class _ShopCategoryScreenState extends State<ShopCategoryScreen> {
 
   String get _categoryName {
     switch (widget.category) {
-      case ItemType.avatar:
+      case ItemType.avatar_frame:
         return 'Аватары';
       case ItemType.boost:
         return 'Усиления';
-      case ItemType.decoration:
+      case ItemType.background:
         return 'Декорации';
-      case ItemType.theme:
+      case ItemType.title:
         return 'Темы';
+        case ItemType.effect:
+        return 'Эффекты';
       case ItemType.equipment:
         return 'Снаряжение';
     }
@@ -39,16 +41,18 @@ class _ShopCategoryScreenState extends State<ShopCategoryScreen> {
 
   IconData get _categoryIcon {
     switch (widget.category) {
-      case ItemType.avatar:
+      case ItemType.avatar_frame:
         return Icons.person;
       case ItemType.boost:
         return Icons.flash_on;
-      case ItemType.decoration:
+      case ItemType.background:
         return Icons.palette;
-      case ItemType.theme:
+      case ItemType.title:
         return Icons.color_lens;
       case ItemType.equipment:
         return Icons.build;
+        case ItemType.effect:
+        return Icons.lightbulb;
     }
   }
 

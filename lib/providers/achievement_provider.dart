@@ -16,7 +16,7 @@ class AchievementProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  final String apiUrl = 'http://192.168.1.64:8000/api/history/achievements/';
+  final String apiUrl = 'http://192.168.232.53:8000/api/history/achievements/';
 
   Future<void> fetchAchievements(String accessToken) async {
     _isLoading = true;

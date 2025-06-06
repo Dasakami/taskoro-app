@@ -1,25 +1,5 @@
 import 'package:flutter/material.dart';
 
-enum TaskType {
-  oneTime,
-  habit,
-  daily,
-}
-
-enum TaskDifficulty {
-  easy,
-  medium,
-  hard,
-  epic,
-}
-
-enum TaskStatus {
-  notStarted,
-  inProgress,
-  completed,
-  paused,
-}
-
 class TaskModel {
   final int? id;
   final String title;
@@ -140,20 +120,20 @@ class TaskModel {
     return TaskModel(
       id: json['id'],
       title: json['title'] ?? '',
-      description: json['description'],
-      type: _taskTypeFromString(json['task_type'] ?? 'one_time'),
-      difficulty: _taskDifficultyFromString(json['difficulty'] ?? 'easy'),
-      status: _taskStatusFromString(json['status'] ?? 'not_started'),
-      deadline: json['deadline'] != null ? DateTime.tryParse(json['deadline']) : null,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      description: json['description'] ?? '',
+      type: _taskTypeFromString(json['task_type']),
+      difficulty: _taskDifficultyFromString(json['difficulty']),
+      status: _taskStatusFromString(json['status']),
+      deadline: json['deadline'] != null ? DateTime.tryParse(json['deadline'] as String) : null,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : DateTime.now(),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : DateTime.now(),
       categoryId: json['category'],
       coins: json['coins'] ?? 0,
       estimatedMinutes: json['estimated_minutes'],
-      frequency: json['frequency'],
+      frequency: json['frequency'] ?? '',
       streak: json['streak'] ?? 0,
-      lastCompleted: json['last_completed'] != null ? DateTime.tryParse(json['last_completed']) : null,
-      targetDate: json['target_date'] != null ? DateTime.tryParse(json['target_date']) : null,
+      lastCompleted: json['last_completed'] != null ? DateTime.tryParse(json['last_completed'] as String) : null,
+      targetDate: json['target_date'] != null ? DateTime.tryParse(json['target_date'] as String) : null,
     );
   }
 
@@ -173,6 +153,8 @@ class TaskModel {
       'streak': streak,
       'last_completed': lastCompleted?.toIso8601String(),
       'target_date': targetDate?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
@@ -215,8 +197,9 @@ class TaskModel {
   }
 
   // Helper methods for enum conversion
-  static TaskType _taskTypeFromString(String type) {
-    switch (type.toLowerCase()) {
+  static TaskType _taskTypeFromString(dynamic type) {
+    final str = (type as String?) ?? 'one_time';
+    switch (str.toLowerCase()) {
       case 'one_time':
       case 'onetime':
         return TaskType.oneTime;
@@ -240,8 +223,9 @@ class TaskModel {
     }
   }
 
-  static TaskDifficulty _taskDifficultyFromString(String difficulty) {
-    switch (difficulty.toLowerCase()) {
+  static TaskDifficulty _taskDifficultyFromString(dynamic difficulty) {
+    final str = (difficulty as String?) ?? 'easy';
+    switch (str.toLowerCase()) {
       case 'easy':
         return TaskDifficulty.easy;
       case 'medium':
@@ -268,8 +252,9 @@ class TaskModel {
     }
   }
 
-  static TaskStatus _taskStatusFromString(String status) {
-    switch (status.toLowerCase()) {
+  static TaskStatus _taskStatusFromString(dynamic status) {
+    final str = (status as String?) ?? 'not_started';
+    switch (str.toLowerCase()) {
       case 'not_started':
         return TaskStatus.notStarted;
       case 'in_progress':
@@ -297,42 +282,6 @@ class TaskModel {
   }
 }
 
-// Existing classes for backward compatibility
-class DailyMission {
-  final String id;
-  final String title;
-  final String description;
-  final int experienceReward;
-  final int coinsReward;
-
-  DailyMission({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.experienceReward,
-    required this.coinsReward,
-  });
-
-  factory DailyMission.fromJson(Map<String, dynamic> json) {
-    return DailyMission(
-      id: json['id'].toString(),
-      title: json['title'],
-      description: json['description'],
-      experienceReward: json['experience_reward'] ?? 0,
-      coinsReward: json['coins_reward'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'experience_reward': experienceReward,
-      'coins_reward': coinsReward,
-    };
-  }
-}
 
 class TaskCategory {
   final int id;
@@ -366,3 +315,8 @@ class TaskCategory {
   }
 }
 
+
+
+enum TaskType { oneTime, habit, daily }
+enum TaskDifficulty { easy, medium, hard, epic }
+enum TaskStatus { notStarted, inProgress, completed, paused }

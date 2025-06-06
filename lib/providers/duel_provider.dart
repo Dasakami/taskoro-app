@@ -12,7 +12,7 @@ class DuelProvider extends ChangeNotifier {
   List<DuelModel> get duels => _duels;
 
   Future<void> fetchDuels(String accessToken, {String? status}) async {
-    final baseUrl = 'http://192.168.1.64:8000/api/duels/duels/';
+    final baseUrl = 'http://192.168.232.53:8000/api/duels/duels/';
     final url = status != null ? Uri.parse('$baseUrl?status=$status') : Uri.parse(baseUrl);
 
     final response = await http.get(
@@ -34,7 +34,7 @@ class DuelProvider extends ChangeNotifier {
 
   Future<void> acceptDuel(String token, int duelId) async {
     final response = await http.post(
-      Uri.parse('http://192.168.1.64:8000/api/duels/$duelId/accept/'),
+      Uri.parse('http://192.168.232.53:8000/api/duels/$duelId/accept/'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -45,7 +45,7 @@ class DuelProvider extends ChangeNotifier {
 
   Future<void> declineDuel(String token, int duelId) async {
     final response = await http.post(
-      Uri.parse('http://192.168.1.64:8000/api/duels/$duelId/decline/'),
+      Uri.parse('http://192.168.232.53:8000/api/duels/$duelId/decline/'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -60,7 +60,7 @@ class DuelProvider extends ChangeNotifier {
     required List<int> taskIds,
     required int coinsStake,
   }) async {
-    final url = Uri.parse('http://192.168.1.64:8000/api/duels/duels/');
+    final url = Uri.parse('http://192.168.232.53:8000/api/duels/duels/');
 
     final body = jsonEncode({
       'opponent_id': opponentId,

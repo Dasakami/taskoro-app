@@ -12,6 +12,7 @@ import 'package:taskoro/theme/app_theme.dart';
 
 import '../screens/achivements_screen.dart';
 import '../screens/notes/notes_screen.dart';
+import '../screens/tasks/base_task_screen.dart';
 import '../screens/tasks/tasks_screen.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -21,7 +22,9 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<UserProvider>().user;
+    final user = context
+        .watch<UserProvider>()
+        .user;
     final userProvider = context.read<UserProvider>();
 
     if (user == null) {
@@ -60,17 +63,17 @@ class AppDrawer extends StatelessWidget {
                           borderRadius: BorderRadius.circular(30),
                           child: user.avatarUrl != null
                               ? Image.network(
-                                  user.avatarUrl!,
-                                  fit: BoxFit.cover,
-                                )
+                            user.avatarUrl!,
+                            fit: BoxFit.cover,
+                          )
                               : Container(
-                                  color: Colors.grey.shade800,
-                                  child: const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 40,
-                                  ),
-                                ),
+                            color: Colors.grey.shade800,
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 40,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -159,6 +162,9 @@ class AppDrawer extends StatelessWidget {
             title: 'Сундуки',
             onTap: () => onNavigate(const ChestsScreen(), 'Сундуки'),
           ),
+          _buildDrawerItem(context, icon: Icons.widgets,
+              title: 'Базовые задачи',
+              onTap: () => onNavigate(const BaseTaskScreen(),'Базовые задачи')),
           _buildDrawerItem(
             context,
             icon: Icons.history,
@@ -219,8 +225,7 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildDrawerItem(
-    BuildContext context, {
+  Widget _buildDrawerItem(BuildContext context, {
     required IconData icon,
     required String title,
     Color? textColor,

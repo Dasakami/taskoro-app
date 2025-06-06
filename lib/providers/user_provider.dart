@@ -1,17 +1,26 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:taskoro/models/user_model.dart';
-import 'package:http_parser/http_parser.dart';  // для MediaType
+
+
+import 'package:http_parser/http_parser.dart'; // для MediaType
 import 'package:mime/mime.dart';
+
+import '../models/user_model.dart';
+import '../screens/main/daily_mission.dart';
+import '../screens/main/daily_motivation.dart';
 
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
+  DailyMission? _dailyMission;
+  DailyMotivation? _dailyMotivation;
   bool _isAuthenticated = false;
   String? _accessToken;
   String? _refreshToken;
 
   UserModel? get user => _user;
+  DailyMission? get dailyMission => _dailyMission;
+  DailyMotivation? get dailyMotivation => _dailyMotivation;
   bool get isAuthenticated => _isAuthenticated;
   String? get accessToken => _accessToken;
 
@@ -33,7 +42,7 @@ class UserProvider extends ChangeNotifier {
 
   /// Логин с сервера
   Future<void> login(String username, String password) async {
-    final url = Uri.parse('http://192.168.1.64:8000/api/token/');
+    final url = Uri.parse('http://192.168.232.53:8000/api/token/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -46,7 +55,10 @@ class UserProvider extends ChangeNotifier {
       _accessToken = data['access'];
       _refreshToken = data['refresh'];
 
-      await fetchUserProfile(); // ← вот здесь загрузим профиль
+      await Future.wait([
+        fetchUserData(),
+        fetchMainData(),
+      ]);
 
       _isAuthenticated = true;
       notifyListeners();
@@ -56,15 +68,15 @@ class UserProvider extends ChangeNotifier {
 
     if (response.statusCode == 401) {
       await refreshAccessToken();
-      return fetchUserProfile(); // повторная попытка
+      return fetchUserData(); // повторная попытка
     }
-
   }
 
-  Future<void> fetchUserProfile() async {
+  /// Получение данных пользователя с сервера, включая профиль, миссию и мотивацию
+  Future<void> fetchUserData() async {
     if (_accessToken == null) return;
 
-    final url = Uri.parse('http://192.168.1.64:8000/api/users/me/');
+    final url = Uri.parse('http://192.168.232.53:8000/api/users/me/');
     final response = await http.get(
       url,
       headers: {
@@ -75,7 +87,14 @@ class UserProvider extends ChangeNotifier {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      _user = UserModel.fromJson(data);
+      print("Профиль пользователя: $data");
+
+      // Обновляем данные профиля; например, если данные приходят в виде:
+      // { "user": "Asakami", ... }
+      if (data != null) {
+        // Обновите преобразование согласно вашей модели UserModel.
+        _user = UserModel.fromJson(data);
+      }
       notifyListeners();
     } else {
       print("Ошибка при получении профиля: ${response.statusCode}");
@@ -83,9 +102,38 @@ class UserProvider extends ChangeNotifier {
   }
 
 
+  Future<void> fetchMainData() async {
+    if (_accessToken == null) return;
+
+    final url = Uri.parse('http://192.168.232.53:8000/api/main/');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $_accessToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print("Данные main: $data");
+
+      // Если API возвращает "daily_mission" и "daily_motivation" в объекте JSON.
+      if (data['daily_mission'] != null) {
+        _dailyMission = DailyMission.fromJson(data['daily_mission']);
+      }
+      if (data['daily_motivation'] != null) {
+        _dailyMotivation = DailyMotivation.fromJson(data['daily_motivation']);
+      }
+      notifyListeners();
+    } else {
+      print("Ошибка при получении данных main: ${response.statusCode}");
+    }
+  }
+
   /// Регистрация
   Future<void> register(String username, String password) async {
-    final url = Uri.parse('http://192.168.1.64:8000/api/auth/users/');
+    final url = Uri.parse('http://192.168.232.53:8000/api/auth/users/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -149,7 +197,6 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-
   Future<void> updateProfile({
     required String username,
     required String bio,
@@ -158,7 +205,7 @@ class UserProvider extends ChangeNotifier {
   }) async {
     if (_accessToken == null) throw Exception('User not authenticated');
 
-    final url = Uri.parse('http://192.168.1.64:8000/api/users/me/edit/');
+    final url = Uri.parse('http://192.168.232.53:8000/api/users/me/edit/');
 
     http.Response response;
 
@@ -212,7 +259,7 @@ class UserProvider extends ChangeNotifier {
   Future<void> refreshAccessToken() async {
     if (_refreshToken == null) return;
 
-    final url = Uri.parse('http://192.168.1.64:8000/api/token/refresh/');
+    final url = Uri.parse('http://192.168.232.53:8000/api/token/refresh/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -228,9 +275,4 @@ class UserProvider extends ChangeNotifier {
       throw Exception('Ошибка обновления токена');
     }
   }
-
 }
-
-
-
-

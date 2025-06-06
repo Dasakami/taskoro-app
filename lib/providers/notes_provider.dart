@@ -20,7 +20,7 @@ class NotesProvider with ChangeNotifier {
     if (token == null) return;
 
     final response = await http.get(
-      Uri.parse('http://192.168.1.64:8000/api/notes/notes/'),
+      Uri.parse('http://192.168.232.53:8000/api/notes/notes/'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -34,7 +34,7 @@ class NotesProvider with ChangeNotifier {
   Future<void> createNote(String title, String? content) async {
     final token = userProvider.accessToken;
     final response = await http.post(
-      Uri.parse('http://192.168.1.64:8000/api/notes/notes/'),
+      Uri.parse('http://192.168.232.53:8000/api/notes/notes/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -52,7 +52,7 @@ class NotesProvider with ChangeNotifier {
   Future<void> updateNote(int id, String title, String? content) async {
     final token = userProvider.accessToken;
     await http.put(
-      Uri.parse('http://192.168.1.64:8000/api/notes/notes/$id/'),
+      Uri.parse('http://192.168.232.53:8000/api/notes/notes/$id/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -68,7 +68,7 @@ class NotesProvider with ChangeNotifier {
   Future<void> deleteNote(int id) async {
     final token = userProvider.accessToken;
     await http.patch(
-      Uri.parse('http://192.168.1.64:8000/api/notes/notes/$id/'),
+      Uri.parse('http://192.168.232.53:8000/api/notes/notes/$id/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ class NotesProvider with ChangeNotifier {
   Future<void> restoreNote(int id) async {
     final token = userProvider.accessToken;
     await http.patch(
-      Uri.parse('http://192.168.1.64:8000/api/notes/notes/$id/'),
+      Uri.parse('http://192.168.232.53:8000/api/notes/notes/$id/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

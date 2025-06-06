@@ -197,3 +197,4 @@ class _FindFriendsScreenState extends State<FindFriendsScreen> {
     );
   }
 }
+
