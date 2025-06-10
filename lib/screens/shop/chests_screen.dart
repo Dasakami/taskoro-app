@@ -1,230 +1,75 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/shop_model.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/magic_card.dart';
 
-class ChestsScreen extends StatefulWidget {
-  const ChestsScreen({super.key});
+class ChestScreen extends StatefulWidget {
+  const ChestScreen({Key? key}) : super(key: key);
 
   @override
-  State<ChestsScreen> createState() => _ChestsScreenState();
+  State<ChestScreen> createState() => _ChestScreenState();
 }
 
-class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMixin {
-  late AnimationController _animationController;
-  bool _isOpening = false;
-
+class _ChestScreenState extends State<ChestScreen> {
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ShopProvider>(context, listen: false).fetchChests();
+      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+      shopProvider.fetchChests();
     });
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _openChest(Chest chest) async {
-    setState(() {
-      _isOpening = true;
-    });
-
-    _animationController.forward();
-
-    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-    final success = await shopProvider.purchaseChest(chest);
-
-    await _animationController.reverse();
-
-    setState(() {
-      _isOpening = false;
-    });
-    // Предположим, что success – результат выполнения purchaseChest
-    if (mounted) {
-      if (success) {
-        final rewards = shopProvider.lastRewards;
-        if (rewards != null && rewards.isNotEmpty) {
-          _showRewardDialog(rewards);
-        } else {
-          // Если награды не пришли, можно показать дефолтное сообщение или награду
-          _showRewardDialog([
-            ChestReward(
-              itemId: 0,
-              itemName: 'Монеты и гемы',
-              rarity: ItemRarity.common,
-              dropChance: 1.0,
-              minQuantity: 100,
-              maxQuantity: 100,
-            )
-          ]);
-        }
-      } else {
-        _showErrorDialog(shopProvider.error ?? 'Ошибка покупки сундука');
-      }
-    }
-
-  }
-
-  void _showRewardDialog(List<ChestReward> rewards) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundSecondary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.card_giftcard, color: Colors.amber),
-            SizedBox(width: 8),
-            Text('Поздравляем!'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Colors.amber, Colors.orange],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.star,
-                size: 50,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Вы получили награды!'),
-            const SizedBox(height: 8),
-            const Text(
-              'Вы получили следующие предметы:',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            // Построение списка наград динамически
-            ...rewards.map((reward) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Text(
-                '• ${reward.itemName} x${reward.minQuantity}-${reward.maxQuantity} (${reward.rarity.name.toUpperCase()})',
-                style: const TextStyle(color: AppColors.textSecondary),
-              ),
-            )),
-            const SizedBox(height: 8),
-            const Text(
-              'Проверьте свой инвентарь',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отлично!'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundSecondary,
-        title: const Row(
-          children: [
-            Icon(Icons.error, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Ошибка'),
-          ],
-        ),
-        content: Text(error),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Понятно'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showChestInfo(Chest chest) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundSecondary,
-        title: Text(chest.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(chest.description),
-            const SizedBox(height: 16),
-            const Text(
-              'Возможные награды:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (chest.possibleRewards.isEmpty)
-              Text(
-                '• Случайные предметы\n• Алмаз ${chest.min_gems_reward} - ${chest.max_gems_reward}\n• Монет ${chest.min_coins_reward} - ${chest.max_coins_reward}\n ',
-                style: const TextStyle(color: AppColors.textSecondary),
-              )
-            else
-              ...chest.possibleRewards.map((reward) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  '• ${reward.itemName} (${(reward.dropChance * 100).toStringAsFixed(1)}%)',
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-              )),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.card_giftcard, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Сундуки'),
-          ],
+        backgroundColor: AppColors.backgroundSecondary,
+        title: const Text(
+          'Сундуки',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        actions: [
+          _buildCurrencyDisplay(),
+        ],
       ),
-      body: Consumer2<ShopProvider, UserProvider>(
-        builder: (context, shopProvider, userProvider, child) {
-          if (shopProvider.isLoading && shopProvider.chests.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+      body: Consumer<ShopProvider>(
+        builder: (context, shopProvider, child) {
+          if (shopProvider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.accentPrimary),
+            );
+          }
+
+          if (shopProvider.error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    shopProvider.error!,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      shopProvider.clearError();
+                      shopProvider.fetchChests();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentPrimary,
+                    ),
+                    child: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            );
           }
 
           if (shopProvider.chests.isEmpty) {
@@ -233,7 +78,7 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.inventory_2_outlined,
+                    Icons.card_giftcard,
                     size: 64,
                     color: AppColors.textSecondary,
                   ),
@@ -241,8 +86,8 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
                   Text(
                     'Нет доступных сундуков',
                     style: TextStyle(
-                      fontSize: 18,
                       color: AppColors.textSecondary,
+                      fontSize: 16,
                     ),
                   ),
                 ],
@@ -250,134 +95,20 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
             );
           }
 
-          return SingleChildScrollView(
+          return Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Заголовок
-                MagicCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Colors.orange, Colors.amber],
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.card_giftcard,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Магические сундуки',
-                                    style: Theme.of(context).textTheme.titleLarge,
-                                  ),
-                                  Text(
-                                    'Откройте и получите случайные награды!',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Баланс
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentPrimary.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.accentPrimary.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.monetization_on, color: AppColors.accentPrimary),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${userProvider.user?.coins ?? 0}',
-                                      style: const TextStyle(
-                                        color: AppColors.accentPrimary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.purple.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.diamond, color: Colors.purple),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${userProvider.user?.gems ?? 0}',
-                                      style: const TextStyle(
-                                        color: Colors.purple,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Сундуки
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.8,
-                  ),
-                  itemCount: shopProvider.chests.length,
-                  itemBuilder: (context, index) {
-                    final chest = shopProvider.chests[index];
-                    return _buildChestCard(chest, shopProvider.canAffordChest(chest));
-                  },
-                ),
-              ],
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.8,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: shopProvider.chests.length,
+              itemBuilder: (context, index) {
+                final chest = shopProvider.chests[index];
+                return _buildChestCard(chest);
+              },
             ),
           );
         },
@@ -385,49 +116,78 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
     );
   }
 
-  Widget _buildChestCard(Chest chest, bool canAfford) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) => Transform.scale(
-        scale: _isOpening ? 1.0 + (_animationController.value * 0.1) : 1.0,
-        child: Transform.rotate(
-          angle: _isOpening ? _animationController.value * 0.1 : 0.0,
-          child: MagicCard(
+  Widget _buildCurrencyDisplay() {
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        if (userProvider.user == null) return Container();
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Row(
+            children: [
+              Icon(Icons.monetization_on, color: Colors.yellow[700], size: 20),
+              const SizedBox(width: 4),
+              Text(
+                '${userProvider.user!.coins}',
+                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.diamond, color: Colors.blue[400], size: 20),
+              const SizedBox(width: 4),
+              Text(
+                '${userProvider.user!.gems}',
+                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildChestCard(Chest chest) {
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final canAfford = _canAfford(userProvider, chest);
+
+        return Card(
+          color: AppColors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _showChestDetails(context, chest, canAfford),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Изображение сундука
+                  // Chest image or icon
                   Expanded(
+                    flex: 3,
                     child: Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            _getChestColor(chest).withOpacity(0.2),
-                            _getChestColor(chest).withOpacity(0.1),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: chest.imageUrl != null
                           ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                         child: Image.network(
                           chest.imageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildChestIcon(chest),
+                          errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.card_giftcard, color: AppColors.accentTertiary, size: 48),
                         ),
                       )
-                          : _buildChestIcon(chest),
+                          : const Icon(Icons.card_giftcard, color: AppColors.accentTertiary, size: 48),
                     ),
                   ),
-
                   const SizedBox(height: 12),
 
-                  // Название
+                  // Chest name
                   Text(
                     chest.name,
                     style: const TextStyle(
@@ -435,114 +195,345 @@ class _ChestsScreenState extends State<ChestsScreen> with TickerProviderStateMix
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
-                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 8),
 
-                  const SizedBox(height: 4),
+                  // Price
+                  Row(
+                    children: [
+                      if (chest.priceCoins > 0) ...[
+                        Icon(Icons.monetization_on, color: Colors.yellow[700], size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${chest.priceCoins}',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      if (chest.priceGems > 0) ...[
+                        Icon(Icons.diamond, color: Colors.blue[400], size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${chest.priceGems}',
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
 
-                  // Описание
+                  // Reward range
                   Text(
-                    chest.description,
+                    'Награда: ${chest.minCoinsReward}-${chest.maxCoinsReward} монет',
                     style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Цена
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getPriceColor(chest).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          chest.currency == 'coins' ? Icons.monetization_on: Icons.diamond,
-                          size: 16,
-                          color: _getPriceColor(chest),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${chest.price_coins} ',
-                          style: TextStyle(
-                            color: _getPriceColor(chest),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Кнопки
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _showChestInfo(chest),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppColors.border),
-                          ),
-                          child: const Icon(Icons.info_outline, size: 16),
-                        ),
+                  if (chest.maxGemsReward > 0)
+                    Text(
+                      '${chest.minGemsReward}-${chest.maxGemsReward} кристаллов',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: canAfford && !_isOpening ? () => _openChest(chest) : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: canAfford ? _getChestColor(chest) : Colors.grey,
-                          ),
-                          child: Text(
-                            canAfford ? 'Открыть' : 'Нет средств',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  bool _canAfford(UserProvider userProvider, Chest chest) {
+    if (userProvider.user == null) return false;
+
+    return userProvider.user!.coins >= chest.priceCoins &&
+        userProvider.user!.gems >= chest.priceGems;
+  }
+
+  void _showChestDetails(BuildContext context, Chest chest, bool canAfford) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _buildChestDetailsSheet(chest, canAfford),
+    );
+  }
+
+  Widget _buildChestDetailsSheet(Chest chest, bool canAfford) {
+    return Consumer2<ShopProvider, UserProvider>(
+      builder: (context, shopProvider, userProvider, child) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Icon(Icons.card_giftcard, color: AppColors.accentTertiary, size: 32),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      chest.name,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              Text(
+                chest.description,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Price section
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Цена',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (chest.priceCoins > 0)
+                      Row(
+                        children: [
+                          Icon(Icons.monetization_on, color: Colors.yellow[700], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${chest.priceCoins} монет',
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    if (chest.priceGems > 0) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.diamond, color: Colors.blue[400], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${chest.priceGems} кристаллов',
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Rewards section
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundSecondary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Возможные награды',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.monetization_on, color: Colors.yellow[700], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${chest.minCoinsReward} - ${chest.maxCoinsReward} монет',
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                    if (chest.maxGemsReward > 0) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.diamond, color: Colors.blue[400], size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${chest.minGemsReward} - ${chest.maxGemsReward} кристаллов',
+                            style: const TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Action button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: (canAfford && !shopProvider.isLoading)
+                      ? () => _openChest(context, chest, shopProvider, userProvider)
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: canAfford ? AppColors.accentPrimary : AppColors.textSecondary,
+                  ),
+                  child: shopProvider.isLoading
+                      ? const CircularProgressIndicator(color: AppColors.textPrimary)
+                      : Text(
+                    canAfford ? 'Открыть сундук' : 'Недостаточно средств',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openChest(BuildContext context, Chest chest, ShopProvider shopProvider, UserProvider userProvider) async {
+    final opening = await shopProvider.openChest(chest.id);
+
+    if (opening != null) {
+      // Update user currency locally
+      userProvider.updateCurrency(
+        coins: opening.coinsReward - chest.priceCoins,
+        gems: opening.gemsReward - chest.priceGems,
+      );
+
+      Navigator.pop(context); // Close bottom sheet
+      _showRewardDialog(context, opening);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(shopProvider.error ?? 'Ошибка открытия сундука'),
+          backgroundColor: Colors.red,
         ),
+      );
+    }
+  }
+
+  void _showRewardDialog(BuildContext context, ChestOpening opening) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.celebration, color: AppColors.accentTertiary),
+            SizedBox(width: 8),
+            Text(
+              'Поздравляем!',
+              style: TextStyle(color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Вы получили из сундука "${opening.chest.name}":',
+              style: const TextStyle(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            if (opening.coinsReward > 0)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.monetization_on, color: Colors.yellow[700]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${opening.coinsReward} монет',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            if (opening.gemsReward > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.diamond, color: Colors.blue[400]),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${opening.gemsReward} кристаллов',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Отлично!',
+              style: TextStyle(color: AppColors.accentPrimary),
+            ),
+          ),
+        ],
       ),
     );
-  }
-
-  Widget _buildChestIcon(Chest chest) {
-    return Center(
-      child: Icon(
-        Icons.card_giftcard,
-        size: 60,
-        color: _getChestColor(chest),
-      ),
-    );
-  }
-
-  Color _getChestColor(Chest chest) {
-    if (chest.price_coins >= 200) return Colors.purple; // Легендарный
-    if (chest.price_coins >= 100) return Colors.orange; // Эпический
-    if (chest.price_coins >= 50) return Colors.blue; // Редкий
-    return Colors.grey; // Обычный
-  }
-
-  Color _getPriceColor(Chest chest) {
-    return chest.currency == 'coins' ? AppColors.accentPrimary : Colors.purple;
   }
 }
-

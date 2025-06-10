@@ -1,369 +1,294 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/shop_model.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/magic_card.dart';
-import 'shop_category_screen.dart';
-import 'item_detail_screen.dart';
-import 'inventory_screen.dart';
 import 'chests_screen.dart';
+import 'inventory_screen.dart';
+import 'item_detail_screen.dart';
 
 class ShopHomeScreen extends StatefulWidget {
-  const ShopHomeScreen({super.key});
+  const ShopHomeScreen({Key? key}) : super(key: key);
 
   @override
   State<ShopHomeScreen> createState() => _ShopHomeScreenState();
 }
 
-class _ShopHomeScreenState extends State<ShopHomeScreen> {
+class _ShopHomeScreenState extends State<ShopHomeScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final List<String> categories = ['all', 'title', 'avatar_frame', 'background', 'boost'];
+  final List<String> categoryNames = ['Все', 'Титулы', 'Рамки', 'Фоны', 'Бусты'];
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: categories.length, vsync: this);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshShop();
+      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      shopProvider.setAccessToken(userProvider.accessToken);
+      shopProvider.fetchShopItems();
+      shopProvider.fetchUserPurchases();
     });
   }
 
-  Future<void> _refreshShop() async {
-    final provider = Provider.of<ShopProvider>(context, listen: false);
-    await provider.fetchShopItems();
-    await provider.fetchChests();
-    await provider.fetchInventory();
-  }
-
-  void _navigateToCategory(ItemType type) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ShopCategoryScreen(category: type),
-      ),
-    );
-  }
-
-  void _navigateToItem(ShopItem item) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ItemDetailScreen(item: item),
-      ),
-    );
-  }
-
-  void _navigateToInventory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const InventoryScreen(),
-      ),
-    );
-  }
-
-  void _navigateToChests() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const ChestsScreen(),
-      ),
-    );
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Consumer2<ShopProvider, UserProvider>(
-        builder: (context, shopProvider, userProvider, child) {
-          return RefreshIndicator(
-            onRefresh: _refreshShop,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundSecondary,
+        title: const Text(
+          'Магазин',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.inventory, color: AppColors.accentPrimary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const UserInventoryScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.card_giftcard, color: AppColors.accentTertiary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChestScreen()),
+              );
+            },
+          ),
+          _buildCurrencyDisplay(),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          indicatorColor: AppColors.accentPrimary,
+          labelColor: AppColors.textPrimary,
+          unselectedLabelColor: AppColors.textSecondary,
+          tabs: categoryNames.map((name) => Tab(text: name)).toList(),
+          onTap: (index) {
+            final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+            final category = categories[index] == 'all' ? null : categories[index];
+            shopProvider.fetchShopItems(category: category);
+          },
+        ),
+      ),
+      body: Consumer<ShopProvider>(
+        builder: (context, shopProvider, child) {
+          if (shopProvider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.accentPrimary),
+            );
+          }
+
+          if (shopProvider.error != null) {
+            return Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Заголовок и баланс
-                  _buildHeader(userProvider),
-
-                  const SizedBox(height: 20),
-
-                  // Быстрые действия
-                  _buildQuickActions(),
-
-                  const SizedBox(height: 24),
-
-                  // Рекомендуемые товары
-                  if (shopProvider.featuredItems.isNotEmpty) ...[
-                    _buildSectionTitle('🔥 Горячие предложения'),
-                    const SizedBox(height: 12),
-                    _buildFeaturedItems(shopProvider.featuredItems),
-                    const SizedBox(height: 24),
-                  ],
-
-                  // Категории
-                  _buildSectionTitle('🛍️ Категории'),
-                  const SizedBox(height: 12),
-                  _buildCategories(),
-
-                  const SizedBox(height: 24),
-
-                  // Новые поступления
-                  if (shopProvider.shopItems.isNotEmpty) ...[
-                    _buildSectionTitle('✨ Новые поступления'),
-                    const SizedBox(height: 12),
-                    _buildNewItems(shopProvider.shopItems.take(4).toList()),
-                  ],
-
-                  const SizedBox(height: 100),
+                  Text(
+                    shopProvider.error!,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      shopProvider.clearError();
+                      shopProvider.fetchShopItems();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentPrimary,
+                    ),
+                    child: const Text('Повторить'),
+                  ),
                 ],
               ),
-            ),
+            );
+          }
+
+          return TabBarView(
+            controller: _tabController,
+            children: categories.map((category) {
+              final items = category == 'all'
+                  ? shopProvider.items
+                  : shopProvider.getItemsByCategory(category);
+
+              return _buildItemGrid(items);
+            }).toList(),
           );
         },
       ),
     );
   }
 
-  Widget _buildHeader(UserProvider userProvider) {
-    final user = userProvider.user;
-    return MagicCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: AppColors.gradientPrimary),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.store,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Магазин',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      Text(
-                        'Улучшай свой опыт!',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildCurrencyDisplay() {
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        if (userProvider.user == null) return Container();
 
-            const SizedBox(height: 16),
-
-            // Баланс
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentPrimary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.accentPrimary.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.monetization_on, color: AppColors.accentPrimary),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${user?.coins ?? 0}',
-                          style: const TextStyle(
-                            color: AppColors.accentPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.purple.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.diamond, color: Colors.purple),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${user?.gems ?? 0}',
-                          style: const TextStyle(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildActionCard(
-            icon: Icons.inventory,
-            title: 'Инвентарь',
-            subtitle: 'Мои предметы',
-            color: Colors.blue,
-            onTap: _navigateToInventory,
+        return Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Row(
+            children: [
+              Icon(Icons.monetization_on, color: Colors.yellow[700], size: 20),
+              const SizedBox(width: 4),
+              Text(
+                '${userProvider.user!.coins}',
+                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.diamond, color: Colors.blue[400], size: 20),
+              const SizedBox(width: 4),
+              Text(
+                '${userProvider.user!.gems}',
+                style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionCard(
-            icon: Icons.card_giftcard,
-            title: 'Сундуки',
-            subtitle: 'Открой сюрприз',
-            color: Colors.orange,
-            onTap: _navigateToChests,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildActionCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return MagicCard(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-              ),
-            ),
-          ],
+  Widget _buildItemGrid(List items) {
+    if (items.isEmpty) {
+      return const Center(
+        child: Text(
+          'Нет доступных товаров',
+          style: TextStyle(color: AppColors.textSecondary),
         ),
-      ),
-    );
-  }
+      );
+    }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
-
-  Widget _buildFeaturedItems(List<ShopItem> items) {
-    return SizedBox(
-      height: 200,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+        ),
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
-          return Container(
-            width: 160,
-            margin: EdgeInsets.only(right: index < items.length - 1 ? 12 : 0),
-            child: _buildItemCard(item, featured: true),
-          );
+          return _buildItemCard(item);
         },
       ),
     );
   }
 
-  Widget _buildCategories() {
-    final categories = [
-      {'type': ItemType.avatar_frame, 'icon': Icons.person, 'name': 'Рамки автара'},
-      {'type': ItemType.boost, 'icon': Icons.flash_on, 'name': 'Усиления'},
-      {'type': ItemType.background, 'icon': Icons.palette, 'name': 'Задний фон'},
-      {'type': ItemType.title, 'icon': Icons.color_lens, 'name': 'Титулы'},
-    ];
+  Widget _buildItemCard(item) {
+    return Consumer<ShopProvider>(
+      builder: (context, shopProvider, child) {
+        final isOwned = shopProvider.ownsItem(item.id);
+        final isEquipped = shopProvider.isItemEquipped(item.id);
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
-      ),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        final category = categories[index];
-        return MagicCard(
-          onTap: () => _navigateToCategory(category['type'] as ItemType),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  category['icon'] as IconData,
-                  size: 32,
-                  color: AppColors.accentPrimary,
+        return Card(
+          color: AppColors.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: isEquipped
+                ? const BorderSide(color: AppColors.accentPrimary, width: 2)
+                : BorderSide.none,
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShopItemDetailScreen(item: item),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  category['name'] as String,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.bold,
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Item image or icon
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundSecondary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: item.imageUrl != null
+                          ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          item.imageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildItemIcon(item.category),
+                        ),
+                      )
+                          : _buildItemIcon(item.category),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+
+                  // Item name
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Price and status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            item.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
+                            color: item.currency == 'coins' ? Colors.yellow[700] : Colors.blue[400],
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${item.price}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isOwned)
+                        Icon(
+                          isEquipped ? Icons.check_circle : Icons.inventory,
+                          color: isEquipped ? AppColors.accentPrimary : AppColors.accentTertiary,
+                          size: 20,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -371,174 +296,32 @@ class _ShopHomeScreenState extends State<ShopHomeScreen> {
     );
   }
 
-  Widget _buildNewItems(List<ShopItem> items) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        return _buildItemCard(items[index]);
-      },
-    );
-  }
-
-  Widget _buildItemCard(ShopItem item, {bool featured = false}) {
-    return MagicCard(
-      onTap: () => _navigateToItem(item),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Изображение товара
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      item.rarityColor.withOpacity(0.2),
-                      item.rarityColor.withOpacity(0.1),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: item.imageUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    item.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildItemIcon(item),
-                  ),
-                )
-                    : _buildItemIcon(item),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Название и редкость
-            Text(
-              item.name,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: item.rarityColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                item.rarityName,
-                style: TextStyle(
-                  color: item.rarityColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 4),
-
-            // Цена
-            Row(
-              children: [
-                Icon(
-                  item.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
-                  size: 16,
-                  color: item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                ),
-                const SizedBox(width: 4),
-                if (item.hasDiscount) ...[
-                  Text(
-                    '${item.price}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                      decoration: TextDecoration.lineThrough,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                ],
-                Text(
-                  '${item.finalPrice}',
-                  style: TextStyle(
-                    color: item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-
-            if (item.hasDiscount)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '-${item.discountPercent}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemIcon(ShopItem item) {
+  Widget _buildItemIcon(String category) {
     IconData icon;
-    switch (item.type) {
-      case ItemType.avatar_frame:
-        icon = Icons.person;
+    Color color;
+
+    switch (category) {
+      case 'title':
+        icon = Icons.title;
+        color = AppColors.accentPrimary;
         break;
-      case ItemType.boost:
+      case 'avatar_frame':
+        icon = Icons.account_circle;
+        color = AppColors.accentSecondary;
+        break;
+      case 'background':
+        icon = Icons.wallpaper;
+        color = AppColors.accentTertiary;
+        break;
+      case 'boost':
         icon = Icons.flash_on;
+        color = Colors.orange;
         break;
-      case ItemType.background:
-        icon = Icons.palette;
-        break;
-      case ItemType.title:
-        icon = Icons.color_lens;
-        break;
-        case ItemType.effect:
-        icon = Icons.lightbulb;
-        break;
-      case ItemType.equipment:
-        icon = Icons.build;
-        break;
+      default:
+        icon = Icons.shopping_bag;
+        color = AppColors.textSecondary;
     }
 
-    return Center(
-      child: Icon(
-        icon,
-        size: 48,
-        color: item.rarityColor,
-      ),
-    );
+    return Icon(icon, color: color, size: 48);
   }
 }
-

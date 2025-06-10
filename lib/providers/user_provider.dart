@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-
 import 'package:http_parser/http_parser.dart'; // для MediaType
 import 'package:mime/mime.dart';
 
+import '../models/character_class_model.dart';
 import '../models/user_model.dart';
 import '../screens/main/daily_mission.dart';
 import '../screens/main/daily_motivation.dart';
@@ -17,11 +17,19 @@ class UserProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   String? _accessToken;
   String? _refreshToken;
+  final String _baseUrl = 'http://192.168.232.53:8000/api';
 
   UserModel? get user => _user;
+
   DailyMission? get dailyMission => _dailyMission;
+
   DailyMotivation? get dailyMotivation => _dailyMotivation;
+
   bool get isAuthenticated => _isAuthenticated;
+  List<CharacterClassModel> characterClasses = [];
+  bool isLoadingClasses = false;
+  String? get baseUrl => _baseUrl;
+
   String? get accessToken => _accessToken;
 
   /// Демо-пользователь (без подключения к серверу)
@@ -55,10 +63,7 @@ class UserProvider extends ChangeNotifier {
       _accessToken = data['access'];
       _refreshToken = data['refresh'];
 
-      await Future.wait([
-        fetchUserData(),
-        fetchMainData(),
-      ]);
+      await Future.wait([fetchUserData(), fetchMainData()]);
 
       _isAuthenticated = true;
       notifyListeners();
@@ -76,83 +81,124 @@ class UserProvider extends ChangeNotifier {
   Future<void> fetchUserData() async {
     if (_accessToken == null) return;
 
-    final url = Uri.parse('http://192.168.232.53:8000/api/users/me/');
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'Bearer $_accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
+    final url = Uri.parse('$_baseUrl/users/me/');
+    final response = await authGet(Uri.parse('$_baseUrl/users/me/'));
+
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      print("Профиль пользователя: $data");
-
-      // Обновляем данные профиля; например, если данные приходят в виде:
-      // { "user": "Asakami", ... }
-      if (data != null) {
-        // Обновите преобразование согласно вашей модели UserModel.
-        _user = UserModel.fromJson(data);
-      }
+      _user = UserModel.fromJson(data);
       notifyListeners();
-    } else {
-      print("Ошибка при получении профиля: ${response.statusCode}");
     }
   }
-
 
   Future<void> fetchMainData() async {
     if (_accessToken == null) return;
 
-    final url = Uri.parse('http://192.168.232.53:8000/api/main/');
-    final response = await http.get(
-      url,
-      headers: {
-        'Authorization': 'Bearer $_accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
+    final url = Uri.parse('$_baseUrl/main/');
+    final response = await authGet(Uri.parse('$_baseUrl/main/'));
+
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      print("Данные main: $data");
 
-      // Если API возвращает "daily_mission" и "daily_motivation" в объекте JSON.
       if (data['daily_mission'] != null) {
         _dailyMission = DailyMission.fromJson(data['daily_mission']);
       }
+
       if (data['daily_motivation'] != null) {
         _dailyMotivation = DailyMotivation.fromJson(data['daily_motivation']);
       }
+
       notifyListeners();
-    } else {
-      print("Ошибка при получении данных main: ${response.statusCode}");
     }
   }
 
-  /// Регистрация
-  Future<void> register(String username, String password) async {
-    final url = Uri.parse('http://192.168.232.53:8000/api/auth/users/');
+
+  Future<void> fetchCharacterClasses() async {
+    isLoadingClasses = true;
+    notifyListeners();
+
+    final uri = Uri.parse('$_baseUrl/users/character-classes/');
+    final headers = {'Content-Type': 'application/json'};
+    if (accessToken != null) {
+      headers['Authorization'] = 'Bearer $accessToken';
+    }
+
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      characterClasses = (data['classes'] as List)
+          .map((e) => CharacterClassModel.fromJson(e))
+          .toList();
+      // опционально можно сохранить data['selected_ids']
+    } else {
+      throw Exception('Не удалось загрузить классы: ${response.statusCode}');
+    }
+
+    isLoadingClasses = false;
+    notifyListeners();
+  }
+
+  /// Регистрация: принимает class_id, сразу отдаёт токены
+  Future<void> register(
+      String username,
+      String email,
+      String password,
+      int classId,
+      ) async {
+    final uri = Uri.parse('$_baseUrl/users/register/'
+        ''
+        ''); // <-- исправлено
+    final body = jsonEncode({
+      'username': username,
+      'email': email,
+      'password': password,
+      're_password': password,
+      'class_id': classId,
+    });
+
     final response = await http.post(
-      url,
+      uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username,
-        'password': password,
-        're_password': password,
-      }),
+      body: body,
     );
 
-    if (response.statusCode == 201) {
-      // После регистрации — логин
-      await login(username, password);
-    } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data.toString());
+    if (response.statusCode != 201) {
+      final error = jsonDecode(response.body);
+      throw Exception(error.toString());
     }
+
+    // Если 201 — сохраняем токены
+    final data = jsonDecode(response.body);
+    _accessToken  = data['access'];
+    _refreshToken = data['refresh'];
+
+    // Сразу подгружаем профиль, main и классы
+    await Future.wait([
+      fetchUserData(),        // https://…/api/profile/
+      fetchMainData(),        // твой /api/main/
+      fetchCharacterClasses() // https://…/api/character-classes/
+    ]);
+
+    _isAuthenticated = true;
+    notifyListeners();
   }
 
+
+  Future<void> updateSelectedClasses(List<int> ids) async {
+    final uri = Uri.parse('$_baseUrl/users/character-classes/');
+    final headers = {
+      'Content-Type': 'application/json',
+      if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+    };
+    final body = jsonEncode({'selected_ids': ids});
+
+    final response = await http.patch(uri, headers: headers, body: body);
+    if (response.statusCode != 200) {
+      throw Exception('Не удалось обновить выбранный класс');
+    }
+  }
   /// Выход
   void logout() {
     _user = null;
@@ -218,23 +264,23 @@ class UserProvider extends ChangeNotifier {
       request.fields['bio'] = bio;
 
       // Определяем mime-тип файла
-      final mimeType = lookupMimeType(avatarFilePath) ?? 'application/octet-stream';
+      final mimeType =
+          lookupMimeType(avatarFilePath) ?? 'application/octet-stream';
       final mimeParts = mimeType.split('/');
 
-      request.files.add(await http.MultipartFile.fromPath(
-        'avatar',
-        avatarFilePath,
-        contentType: MediaType(mimeParts[0], mimeParts[1]),
-      ));
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'avatar',
+          avatarFilePath,
+          contentType: MediaType(mimeParts[0], mimeParts[1]),
+        ),
+      );
 
       final streamedResponse = await request.send();
       response = await http.Response.fromStream(streamedResponse);
     } else {
       // Обновление без файла — отправляем JSON (если avatarUrl передан, включаем в JSON)
-      final body = {
-        'username': username,
-        'bio': bio,
-      };
+      final body = {'username': username, 'bio': bio};
 
       response = await http.patch(
         url,
@@ -255,11 +301,30 @@ class UserProvider extends ChangeNotifier {
       throw Exception('Ошибка обновления профиля: $data');
     }
   }
+  Future<http.Response> authGet(Uri url) async {
+    var response = await http.get(url, headers: _authHeaders());
+
+    if (response.statusCode == 401) {
+      await refreshAccessToken();
+      response = await http.get(url, headers: _authHeaders());
+    }
+
+    return response;
+  }
+
+
+  /// Заголовки авторизации
+  Map<String, String> _authHeaders() {
+    return {
+      'Authorization': 'Bearer $_accessToken',
+      'Content-Type': 'application/json',
+    };
+  }
 
   Future<void> refreshAccessToken() async {
     if (_refreshToken == null) return;
 
-    final url = Uri.parse('http://192.168.232.53:8000/api/token/refresh/');
+    final url = Uri.parse('$_baseUrl/token/refresh/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -271,8 +336,13 @@ class UserProvider extends ChangeNotifier {
       _accessToken = data['access'];
       notifyListeners();
     } else {
-      logout(); // refresh невалиден — выходим из аккаунта
-      throw Exception('Ошибка обновления токена');
+      logout();
     }
   }
+
+  Future<void> refreshMainData() async {
+    await Future.wait([
+      fetchUserData(),
+      fetchMainData(),
+    ]);}
 }

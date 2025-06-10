@@ -1,155 +1,89 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import '../../../models/duel_model.dart';
-import '../../../theme/app_theme.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../../models/duel_model.dart';
+import '../../providers/duel_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../theme/app_theme.dart';
 
 class DuelDetailScreen extends StatelessWidget {
-  final DuelModel duel;
+  static const routeName = '/duel-detail';
 
-  const DuelDetailScreen({Key? key, required this.duel}) : super(key: key);
-
-  String _formatDateTime(DateTime? dt) {
-    if (dt == null) return '-';
-    return '${dt.day.toString().padLeft(2, '0')}.'
-        '${dt.month.toString().padLeft(2, '0')}.'
-        '${dt.year} ${dt.hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')}';
-  }
+  const DuelDetailScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final bool duelEnded = duel.endTime != null;
+    final d = ModalRoute.of(context)!.settings.arguments as DuelModel;
+    final token = context.read<UserProvider>().accessToken;
+    final prov  = context.read<DuelProvider>();
+
+    // Формат дат
+    String fmt(DateTime? dt) => dt == null ? '-' : DateFormat('dd.MM.yyyy HH:mm').format(dt);
+
+    Color badgeColor;
+    switch (d.status) {
+      case 'pending': badgeColor = AppColors.warning; break;
+      case 'active':  badgeColor = AppColors.accentPrimary; break;
+      case 'declined':badgeColor = AppColors.error; break;
+      default:        badgeColor = AppColors.success;
+    }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("⚔️ Дуэль"),
-        backgroundColor: AppColors.cardBackground,
-        centerTitle: true,
-      ),
-      backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
+      appBar: AppBar(title: Text('Дуэль #${d.id}')),
+      body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-              )
-            ],
-          ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                  "${duel.challenger.username}  VS  ${duel.opponent.username}",
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppColors.accentPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text('#${d.id}', style: AppTheme.darkTheme.textTheme.displaySmall)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(6)),
+              child: Text(d.status.toUpperCase(), style: AppTheme.darkTheme.textTheme.bodyMedium),
+            )
+          ]),
+          const SizedBox(height: 12),
 
-              _infoRow(Icons.attach_money, 'Ставка', '${duel.coinsStake} монет'),
-              _infoRow(Icons.info_outline, 'Статус', duel.status),
-              _infoRow(Icons.timer_outlined, 'Создана', _formatDateTime(duel.createdAt)),
-              _infoRow(Icons.play_circle_outline, 'Началась', _formatDateTime(duel.startTime)),
-              _infoRow(Icons.flag_outlined, 'Завершилась', _formatDateTime(duel.endTime)),
+          _infoRow(Icons.account_circle, 'Challenger:', d.challenger.username),
+          _infoRow(Icons.person, 'Opponent:',   d.opponent.username),
+          _infoRow(Icons.task_alt,      'Task ID:',   d.task?.toString() ?? '-'),
+          _infoRow(Icons.monetization_on, 'Stake:',   '${d.coinsStake}'),
+          _infoRow(Icons.calendar_today, 'Created:', fmt(d.createdAt)),
+          _infoRow(Icons.play_arrow,    'Started:',  fmt(d.startTime)),
+          _infoRow(Icons.stop_circle,   'Finished:', fmt(d.endTime)),
+          if (d.winner != null)
+            _infoRow(Icons.emoji_events, 'Winner:',
+                d.winner == d.challenger.id ? d.challenger.username : d.opponent.username),
 
-              if (duelEnded)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.emoji_events, color: Colors.amber),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          duel.winner == null
-                              ? 'Победитель не определён'
-                              : 'Победитель: ${duel.winner == duel.challenger.id ? duel.challenger.username : duel.opponent.username}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accentSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 24),
-
-              Row(
-                children: const [
-                  Icon(Icons.book, size: 20, color: AppColors.textSecondary),
-                  SizedBox(width: 8),
-                  Text(
-                    'ID задачи:',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.bold,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
+          const Spacer(),
+          if (d.status == 'pending')
+            Row(children: [
+              ElevatedButton(
+                onPressed: () => prov.acceptDuel(token!, d.id),
+                child: const Text('Принять'),
               ),
-              Text(
-                '${duel.task}',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontStyle: FontStyle.italic,
-                ),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                onPressed: () => prov.declineDuel(token!, d.id),
+                child: const Text('Отклонить'),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Подробнее о задаче можно загрузить позже...',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-            ],
-          ),
-        ),
+            ]),
+        ]),
       ),
     );
   }
 
-  Widget _infoRow(IconData icon, String title, String value) {
+  Widget _infoRow(IconData ico, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.accentPrimary, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            '$title:',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(children: [
+        Icon(ico, size: 20, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Text(label, style: AppTheme.darkTheme.textTheme.bodyLarge),
+        const SizedBox(width: 8),
+        Expanded(child: Text(value, style: AppTheme.darkTheme.textTheme.bodyMedium)),
+      ]),
     );
   }
 }

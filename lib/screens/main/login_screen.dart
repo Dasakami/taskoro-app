@@ -3,23 +3,40 @@ import 'package:provider/provider.dart';
 import 'package:taskoro/providers/user_provider.dart';
 import 'package:taskoro/widgets/animated_background.dart';
 import 'package:taskoro/theme/app_theme.dart';
+import 'package:taskoro/models/character_class_model.dart'; // поправь путь
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _usernameController   = TextEditingController();
+  final _passwordController   = TextEditingController();
+  final _emailController      = TextEditingController();
+  final _rePasswordController = TextEditingController();
+
   bool _isLogin = true;
+  int? _selectedClassId;
+
+  @override
+  void initState() {
+    super.initState();
+    // загружаем классы при старте экрана
+    final prov = context.read<UserProvider>();
+    prov.fetchCharacterClasses().catchError((e) {
+      // можно показать ошибку, но не критично
+      debugPrint('Ошибка загрузки классов: $e');
+    });
+  }
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _emailController.dispose();
+    _rePasswordController.dispose();
     super.dispose();
   }
 
@@ -29,31 +46,37 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _submitForm() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text.trim();
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
 
-    if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пожалуйста, заполните все поля')),
-      );
-      return;
+  Future<void> _submitForm() async {
+    final username   = _usernameController.text.trim();
+    final password   = _passwordController.text.trim();
+    final email      = _emailController.text.trim();
+    final rePassword = _rePasswordController.text.trim();
+    final classId    = _selectedClassId;
+
+    if (username.isEmpty || password.isEmpty ||
+        (!_isLogin && (email.isEmpty || rePassword.isEmpty || classId == null))) {
+      return _showSnack('Пожалуйста, заполните все поля');
+    }
+    if (!_isLogin && password != rePassword) {
+      return _showSnack('Пароли не совпадают');
     }
 
     try {
       if (_isLogin) {
         await context.read<UserProvider>().login(username, password);
       } else {
-        await context.read<UserProvider>().register(username, password);
+        await context.read<UserProvider>()
+            .register(username, email, password, classId!);
       }
-
-      // TODO: Переход на главный экран
       Navigator.pushReplacementNamed(context, '/home');
-
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      _showSnack(e.toString());
     }
   }
 
@@ -63,6 +86,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final prov = context.watch<UserProvider>();
+    final classes = prov.characterClasses;
+    final loading = prov.isLoadingClasses;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -74,17 +101,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo/Title
+                    // Logo/Title...
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
                         colors: AppColors.gradientPrimary,
                       ).createShader(bounds),
                       child: Text(
                         'TASKORO',
-                        style: Theme.of(context).textTheme.displayLarge!.copyWith(
-                          fontSize: 40,
-                          letterSpacing: 3,
-                        ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .displayLarge!
+                            .copyWith(fontSize: 40, letterSpacing: 3),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -95,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 40),
 
-                    // Login/Register Card
+                    // Card c формой
                     Card(
                       margin: EdgeInsets.zero,
                       child: Padding(
@@ -108,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 24),
 
-                            // Username field
+                            // Username
                             TextField(
                               controller: _usernameController,
                               decoration: const InputDecoration(
@@ -118,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Password field
+                            // Password
                             TextField(
                               controller: _passwordController,
                               obscureText: true,
@@ -127,44 +154,99 @@ class _LoginScreenState extends State<LoginScreen> {
                                 prefixIcon: Icon(Icons.lock_outline),
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 16),
 
-                            // Submit button
+                            // Режим регистрации: email, подтверждение, класс
+                            if (!_isLogin) ...[
+                              if (loading)
+                                const Center(child: CircularProgressIndicator())
+                              else ...[
+                                // E-mail
+                                TextField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    labelText: 'E-mail',
+                                    prefixIcon: Icon(Icons.email_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Подтверждение пароля
+                                TextField(
+                                  controller: _rePasswordController,
+                                  obscureText: true,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Подтвердите пароль',
+                                    prefixIcon: Icon(Icons.lock_outline),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+
+                                // Дропдаун с классами из бэка
+                                DropdownButtonFormField<int>(
+                                  value: _selectedClassId,
+                                  items: classes.map((cls) {
+                                    return DropdownMenuItem<int>(
+                                      value: cls.id,
+                                      child: Text(cls.name),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedClassId = val;
+                                    });
+                                  },
+                                  decoration: const InputDecoration(
+                                    labelText: 'Класс персонажа',
+                                    prefixIcon:
+                                    Icon(Icons.shield_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            ],
+
+                            // Кнопка отправки
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: _submitForm,
-                                child: Text(_isLogin ? 'Войти' : 'Зарегистрироваться'),
+                                child: Text(
+                                  _isLogin ? 'Войти' : 'Зарегистрироваться',
+                                ),
                               ),
                             ),
                             const SizedBox(height: 16),
 
-                            // Toggle mode
+                            // Переключение режима
                             TextButton(
                               onPressed: _toggleMode,
                               child: Text(
                                 _isLogin
                                     ? 'Нет аккаунта? Зарегистрироваться'
                                     : 'Уже есть аккаунт? Войти',
-                                style: TextStyle(color: AppColors.accentSecondary),
+                                style: TextStyle(
+                                    color: AppColors.accentSecondary),
                               ),
                             ),
-
                             const SizedBox(height: 8),
                             const Divider(),
                             const SizedBox(height: 8),
 
-                            // Demo button
+                            // Демо режим
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton(
                                 onPressed: _loginDemo,
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: AppColors.accentTertiary),
+                                  side: const BorderSide(
+                                      color: AppColors.accentTertiary),
                                 ),
                                 child: const Text(
                                   'Демо режим',
-                                  style: TextStyle(color: AppColors.accentTertiary),
+                                  style: TextStyle(
+                                      color: AppColors.accentTertiary),
                                 ),
                               ),
                             ),

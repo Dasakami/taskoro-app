@@ -88,7 +88,7 @@ class TasksProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/tasks/tasks/');
-      final response = await http.get(url, headers: _headers);
+      final response = await userProvider.authGet(url);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -109,7 +109,7 @@ class TasksProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/tasks/categories/');
-      final response = await http.get(url, headers: _headers);
+      final response = await userProvider.authGet(url);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);

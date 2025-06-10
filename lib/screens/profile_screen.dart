@@ -23,11 +23,11 @@ class ProfileScreen extends StatelessWidget {
 
     return Stack(
       children: [
-        // Временный фон
+        // Динамический фон в зависимости от надетого предмета
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/images/profile_background.jpg'),
+              image: _getBackgroundImage(user),
               fit: BoxFit.cover,
             ),
           ),
@@ -60,8 +60,7 @@ class ProfileScreen extends StatelessWidget {
                                       colors: AppColors.gradientPrimary,
                                     ),
                                     border: Border.all(
-                                      color: AppColors.accentPrimary,
-                                      width: 2,
+                                      color: _getAvatarFrameColor(user),
                                     ),
                                   ),
                                   child: user.avatarUrl != null
@@ -111,6 +110,30 @@ class ProfileScreen extends StatelessWidget {
                                     style:
                                     Theme.of(context).textTheme.displaySmall,
                                   ),
+                                  if (user.title != null && user.title!.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      margin: const EdgeInsets.only(top: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentPrimary.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppColors.accentPrimary,
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        user.title!,
+                                        style: const TextStyle(
+                                          color: AppColors.accentPrimary,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                                   const SizedBox(height: 8),
                                   LinearPercentIndicator(
                                     percent: user.experiencePercent / 100,
@@ -292,6 +315,29 @@ class ProfileScreen extends StatelessWidget {
       ],
     );
   }
+
+  // Вспомогательные методы для получения динамических данных
+  ImageProvider _getBackgroundImage(user) {
+    // Логика для выбора фона в зависимости от надетого предмета
+    // Например, если у пользователя есть определенный фон, возвращаем его
+    if (user.equippedBackground != null) {
+      return NetworkImage(user.equippedBackground!);
+    }
+    // Если фон не надет, возвращаем фон по умолчанию
+    return const AssetImage('assets/images/profile_background.jpg');
+  }
+
+  Color _getAvatarFrameColor(user) {
+    // Логика для выбора цвета рамки аватара в зависимости от надетого предмета
+    // Например, если у пользователя есть определенная рамка, возвращаем ее цвет
+    if (user.equippedAvatarFrameColor != null) {
+      return Color(int.parse('0xff${user.equippedAvatarFrameColor!.substring(1)}'));
+    }
+    // Если рамка не надета, возвращаем цвет по умолчанию
+    return AppColors.accentPrimary;
+  }
+
+
 
   Widget _buildStatItem(String icon, String value, String label) {
     return Container(

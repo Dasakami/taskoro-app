@@ -18,7 +18,7 @@ class Friend {
 
     if (profile != null) {
       final user = profile['user'];
-      String username = user is String ? user : 'Unknown';
+      String username = user is String ? user : 'Неизвестный';
       String? avatar = profile['avatar'] as String?;
 
       return Friend(
@@ -33,7 +33,7 @@ class Friend {
     // fallback
     return Friend(
       id: json['id'] as int? ?? 0,
-      username: json['username'] as String? ?? 'Unknown',
+      username: json['username'] as String? ?? 'Неизвестный',
       avatarUrl: json['avatar_url'] as String? ?? json['avatar'] as String?,
       level: json['level'] as int? ?? 1,
       experience: json['experience'] as int? ?? 0,
@@ -60,14 +60,14 @@ class FriendRequest {
     final key = isReceived ? 'sender' : 'receiver';
     final container = json[key] as Map<String, dynamic>?;
 
-    String username = 'Unknown';
+    String username = 'Неизвестный';
     String? avatar;
     int userId = 0;
     int level = 1;
 
     if (container != null) {
       final user = container['user'];
-      username = user is String ? user : 'Unknown';
+      username = user is String ? user : 'Неизвестный';
       avatar = container['avatar'] as String?;
       userId = container['id'] as int? ?? 0;
       level = container['level'] as int? ?? 1;

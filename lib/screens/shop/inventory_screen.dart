@@ -1,27 +1,33 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/shop_model.dart';
 import '../../providers/shop_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/magic_card.dart';
+import 'item_detail_screen.dart';
 
-class InventoryScreen extends StatefulWidget {
-  const InventoryScreen({super.key});
+
+class UserInventoryScreen extends StatefulWidget {
+  const UserInventoryScreen({super.key});
 
   @override
-  State<InventoryScreen> createState() => _InventoryScreenState();
+  State<UserInventoryScreen> createState() => _UserInventoryScreenState();
 }
 
-class _InventoryScreenState extends State<InventoryScreen> with TickerProviderStateMixin {
+class _UserInventoryScreenState extends State<UserInventoryScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  ItemType? _selectedType;
+  final List<String> categories = ['all', 'title', 'avatar_frame', 'background', 'boost'];
+  final List<String> categoryNames = ['Все', 'Титулы', 'Рамки', 'Фоны', 'Бусты'];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: ItemType.values.length + 1, vsync: this);
+    _tabController = TabController(length: categories.length, vsync: this);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ShopProvider>(context, listen: false).fetchInventory();
+      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+      shopProvider.fetchUserPurchases();
+      shopProvider.fetchActiveBoosts();
     });
   }
 
@@ -31,447 +37,335 @@ class _InventoryScreenState extends State<InventoryScreen> with TickerProviderSt
     super.dispose();
   }
 
-  List<InventoryItem> _getFilteredItems(List<InventoryItem> items) {
-    if (_selectedType == null) return items;
-    return items.where((item) => item.item.type == _selectedType).toList();
-  }
-
-  void _showItemOptions(InventoryItem inventoryItem) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.backgroundSecondary,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.textSecondary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        inventoryItem.item.rarityColor.withOpacity(0.2),
-                        inventoryItem.item.rarityColor.withOpacity(0.1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: _buildItemIcon(inventoryItem.item),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        inventoryItem.item.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        'Количество: ${inventoryItem.quantity}',
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            if (inventoryItem.item.type == ItemType.boost)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _useItem(inventoryItem);
-                  },
-                  icon: const Icon(Icons.flash_on),
-                  label: const Text('Использовать'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentPrimary,
-                  ),
-                ),
-              ),
-
-            if (inventoryItem.item.type == ItemType.avatar_frame ||
-                inventoryItem.item.type == ItemType.title ||
-                inventoryItem.item.type == ItemType.background)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _equipItem(inventoryItem);
-                  },
-                  icon: Icon(inventoryItem.isEquipped ? Icons.check_circle : Icons.circle_outlined),
-                  label: Text(inventoryItem.isEquipped ? 'Снять' : 'Экипировать'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: inventoryItem.isEquipped ? Colors.orange : AppColors.accentPrimary,
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 8),
-
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showItemDetails(inventoryItem);
-                },
-                icon: const Icon(Icons.info_outline),
-                label: const Text('Подробнее'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _useItem(InventoryItem inventoryItem) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Использован предмет: ${inventoryItem.item.name}'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _equipItem(InventoryItem inventoryItem) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          inventoryItem.isEquipped
-              ? 'Предмет снят: ${inventoryItem.item.name}'
-              : 'Предмет экипирован: ${inventoryItem.item.name}',
-        ),
-        backgroundColor: Colors.blue,
-      ),
-    );
-  }
-
-  void _showItemDetails(InventoryItem inventoryItem) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundSecondary,
-        title: Text(inventoryItem.item.name),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(inventoryItem.item.description),
-            const SizedBox(height: 16),
-            _buildDetailRow('Тип', inventoryItem.item.typeName),
-            _buildDetailRow('Редкость', inventoryItem.item.rarityName),
-            _buildDetailRow('Количество', '${inventoryItem.quantity}'),
-            _buildDetailRow('Получено', _formatDate(inventoryItem.acquiredAt)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}.${date.month}.${date.year}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.inventory, color: AppColors.accentPrimary),
-            SizedBox(width: 8),
-            Text('Инвентарь'),
-          ],
+        backgroundColor: AppColors.backgroundSecondary,
+        title: const Text(
+          'Инвентарь',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
           indicatorColor: AppColors.accentPrimary,
           labelColor: AppColors.textPrimary,
           unselectedLabelColor: AppColors.textSecondary,
-          onTap: (index) {
-            setState(() {
-              _selectedType = index == 0 ? null : ItemType.values[index - 1];
-            });
-          },
-          tabs: [
-            const Tab(text: 'Все'),
-            ...ItemType.values.map((type) => Tab(text: _getTypeName(type))),
-          ],
+          tabs: categoryNames.map((name) => Tab(text: name)).toList(),
         ),
       ),
       body: Consumer<ShopProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading && provider.inventory.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final filteredItems = _getFilteredItems(provider.inventory);
-
-          if (filteredItems.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 64,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _selectedType == null
-                        ? 'Инвентарь пуст'
-                        : 'Нет предметов типа "${_getTypeName(_selectedType!)}"',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Купите предметы в магазине',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
+        builder: (context, shopProvider, child) {
+          if (shopProvider.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.accentPrimary),
             );
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.8,
-            ),
-            itemCount: filteredItems.length,
-            itemBuilder: (context, index) {
-              final inventoryItem = filteredItems[index];
-              return _buildInventoryCard(inventoryItem);
-            },
+          return TabBarView(
+            controller: _tabController,
+            children: categories.map((category) {
+              List<Purchase> purchases;
+              if (category == 'all') {
+                purchases = shopProvider.userInventory;
+              } else {
+                purchases = shopProvider.userInventory
+                    .where((p) => p.item.category == category)
+                    .toList();
+              }
+
+              return _buildInventoryGrid(purchases, category);
+            }).toList(),
           );
         },
       ),
     );
   }
 
-  Widget _buildInventoryCard(InventoryItem inventoryItem) {
-    return MagicCard(
-      onTap: () => _showItemOptions(inventoryItem),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+  Widget _buildInventoryGrid(List<Purchase> purchases, String category) {
+    if (purchases.isEmpty) {
+      return Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Статус экипировки
-            if (inventoryItem.isEquipped)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, size: 12, color: Colors.green),
-                    SizedBox(width: 4),
-                    Text(
-                      'Экипировано',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // Изображение предмета
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      inventoryItem.item.rarityColor.withOpacity(0.2),
-                      inventoryItem.item.rarityColor.withOpacity(0.1),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: inventoryItem.item.imageUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    inventoryItem.item.imageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildItemIcon(inventoryItem.item),
-                  ),
-                )
-                    : _buildItemIcon(inventoryItem.item),
-              ),
+            Icon(
+              _getCategoryIcon(category),
+              size: 64,
+              color: AppColors.textSecondary,
             ),
-
-            // Название
+            const SizedBox(height: 16),
             Text(
-              inventoryItem.item.name,
+              category == 'all' ? 'Инвентарь пуст' : 'Нет предметов этой категории',
               style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+                color: AppColors.textSecondary,
+                fontSize: 16,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            const SizedBox(height: 4),
-
-            // Редкость и количество
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: inventoryItem.item.rarityColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    inventoryItem.item.rarityName,
-                    style: TextStyle(
-                      color: inventoryItem.item.rarityColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (inventoryItem.quantity > 1)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentPrimary.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'x${inventoryItem.quantity}',
-                      style: const TextStyle(
-                        color: AppColors.accentPrimary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
             ),
           ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Active boosts section for boost category
+        if (category == 'boost') _buildActiveBoostsSection(),
+
+        // Inventory items
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
+              itemCount: purchases.length,
+              itemBuilder: (context, index) {
+                final purchase = purchases[index];
+                return _buildInventoryItemCard(purchase);
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActiveBoostsSection() {
+    return Consumer<ShopProvider>(
+      builder: (context, shopProvider, child) {
+        if (shopProvider.activeBoosts.isEmpty) {
+          return Container();
+        }
+
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Активные бусты',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...shopProvider.activeBoosts.map((boost) => _buildActiveBoostItem(boost)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActiveBoostItem(ActiveBoost boost) {
+    final timeLeft = boost.expiresAt.difference(DateTime.now());
+    final hoursLeft = timeLeft.inHours;
+    final minutesLeft = timeLeft.inMinutes % 60;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundSecondary,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.flash_on, color: Colors.orange, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  boost.boostItem.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'x${boost.multiplier} | ${hoursLeft}ч ${minutesLeft}м',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInventoryItemCard(Purchase purchase) {
+    return Card(
+      color: AppColors.cardBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: purchase.isEquipped
+            ? const BorderSide(color: AppColors.accentPrimary, width: 2)
+            : BorderSide.none,
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ShopItemDetailScreen(item: purchase.item),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Item image or icon
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundSecondary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: purchase.item.imageUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      purchase.item.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildItemIcon(purchase.item.category),
+                    ),
+                  )
+                      : _buildItemIcon(purchase.item.category),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Item name
+              Text(
+                purchase.item.name,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+
+              // Status and purchase date
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _getCategoryName(purchase.item.category),
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  Icon(
+                    purchase.isEquipped ? Icons.check_circle : Icons.inventory,
+                    color: purchase.isEquipped ? AppColors.accentPrimary : AppColors.textSecondary,
+                    size: 16,
+                  ),
+                ],
+              ),
+              if (purchase.quantity > 1) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Количество: ${purchase.quantity}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildItemIcon(ShopItem item) {
+  Widget _buildItemIcon(String category) {
     IconData icon;
-    switch (item.type) {
-      case ItemType.avatar_frame:
-        icon = Icons.person;
+    Color color;
+
+    switch (category) {
+      case 'title':
+        icon = Icons.title;
+        color = AppColors.accentPrimary;
         break;
-      case ItemType.boost:
+      case 'avatar_frame':
+        icon = Icons.account_circle;
+        color = AppColors.accentSecondary;
+        break;
+      case 'background':
+        icon = Icons.wallpaper;
+        color = AppColors.accentTertiary;
+        break;
+      case 'boost':
         icon = Icons.flash_on;
+        color = Colors.orange;
         break;
-        case ItemType.effect:
-        icon = Icons.flash_auto;
-        break;
-      case ItemType.background:
-        icon = Icons.palette;
-        break;
-      case ItemType.title:
-        icon = Icons.color_lens;
-        break;
-      case ItemType.equipment:
-        icon = Icons.build;
-        break;
+      default:
+        icon = Icons.shopping_bag;
+        color = AppColors.textSecondary;
     }
 
-    return Center(
-      child: Icon(
-        icon,
-        size: 48,
-        color: item.rarityColor,
-      ),
-    );
+    return Icon(icon, color: color, size: 48);
   }
 
-  String _getTypeName(ItemType type) {
-    switch (type) {
-      case ItemType.avatar_frame:
-        return 'Аватары';
-      case ItemType.boost:
-        return 'Усиления';
-      case ItemType.background:
-        return 'Декорации';
-      case ItemType.title:
-        return 'Темы';
-        case ItemType.effect:
-        return 'Эффекты';
-      case ItemType.equipment:
-        return 'Снаряжение';
+  IconData _getCategoryIcon(String category) {
+    switch (category) {
+      case 'title':
+        return Icons.title;
+      case 'avatar_frame':
+        return Icons.account_circle;
+      case 'background':
+        return Icons.wallpaper;
+      case 'boost':
+        return Icons.flash_on;
+      default:
+        return Icons.inventory;
+    }
+  }
+
+  String _getCategoryName(String category) {
+    switch (category) {
+      case 'title':
+        return 'Титул';
+      case 'avatar_frame':
+        return 'Рамка';
+      case 'background':
+        return 'Фон';
+      case 'boost':
+        return 'Буст';
+      default:
+        return 'Предмет';
     }
   }
 }

@@ -17,6 +17,11 @@ class UserModel {
   final String? createdAt;
   final String? updatedAt;
 
+  // Equipped items fields
+  final String? equippedBackground;
+  final String? equippedAvatarFrameColor;
+  final String? equippedTitle;
+
   UserModel({
     required this.id,
     required this.username,
@@ -34,6 +39,9 @@ class UserModel {
     this.characterClasses = const [],
     this.createdAt,
     this.updatedAt,
+    this.equippedBackground,
+    this.equippedAvatarFrameColor,
+    this.equippedTitle,
   });
 
   double get experiencePercent =>
@@ -57,6 +65,9 @@ class UserModel {
       characterClasses: json['character_classes'] ?? [],
       createdAt: json['created_at'],
       updatedAt: json['updated_at'],
+      equippedBackground: json['equipped_background'],
+      equippedAvatarFrameColor: json['equipped_avatar_frame_color'],
+      equippedTitle: json['equipped_title'],
     );
   }
 
@@ -78,6 +89,9 @@ class UserModel {
       'character_classes': characterClasses,
       'created_at': createdAt,
       'updated_at': updatedAt,
+      'equipped_background': equippedBackground,
+      'equipped_avatar_frame_color': equippedAvatarFrameColor,
+      'equipped_title': equippedTitle,
     };
   }
 
@@ -98,6 +112,9 @@ class UserModel {
     List<dynamic>? characterClasses,
     String? createdAt,
     String? updatedAt,
+    String? equippedBackground,
+    String? equippedAvatarFrame,
+    String? equippedTitle,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -116,8 +133,9 @@ class UserModel {
       characterClasses: characterClasses ?? this.characterClasses,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      equippedBackground: equippedBackground ?? this.equippedBackground,
+      equippedAvatarFrameColor: equippedAvatarFrame ?? this.equippedAvatarFrameColor,
+      equippedTitle: equippedTitle ?? this.equippedTitle,
     );
   }
 }
-
-

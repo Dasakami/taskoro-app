@@ -9,6 +9,7 @@ import 'package:taskoro/screens/profile_screen.dart';
 import 'package:taskoro/widgets/app_drawer.dart';
 import 'package:taskoro/widgets/animated_background.dart';
 
+import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
@@ -24,11 +25,18 @@ class _MainScreenState extends State<MainScreen> {
   Widget _currentScreen = const DashboardScreen();
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    Provider.of<UserProvider>(context, listen: false).refreshMainData();
+  }
+
+  @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TasksProvider>().initDemoData();
     });
+    didChangeDependencies();
   }
 
   final List<Widget> _screens = [

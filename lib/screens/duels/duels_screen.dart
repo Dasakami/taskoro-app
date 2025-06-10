@@ -1,214 +1,106 @@
+// screens/duels_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:taskoro/screens/duels/waiting_duels_screen.dart';
+import 'package:taskoro/screens/friends/friends_screen.dart';
+
 import '../../models/duel_model.dart';
 import '../../providers/duel_provider.dart';
-import '../../providers/user_provider.dart'; // чтобы получить токен
+import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
-import 'duel_detail_screen.dart'; // импорт экрана деталей
+import 'create_duel_screen.dart';
+import 'duel_detail_screen.dart';
+
 
 class DuelsScreen extends StatefulWidget {
-  const DuelsScreen({super.key});
+  static const routeName = '/duels';
 
-  @override
-  State<DuelsScreen> createState() => _DuelsScreenState();
+  const DuelsScreen({super.key});
+  @override _DuelsScreenState createState() => _DuelsScreenState();
 }
 
-class _DuelsScreenState extends State<DuelsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  bool _isLoading = false;
-  String? _error;
-  bool _isInit = true;
-
+class _DuelsScreenState extends State<DuelsScreen> {
+  late Future _load;
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    final token = context.read<UserProvider>().accessToken;
+    _load = context.read<DuelProvider>().fetchDuels(token!);
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  Widget build(BuildContext ctx) {
+    final prov = ctx.watch<DuelProvider>();
+    final token = ctx.read<UserProvider>().accessToken;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_isInit) {
-      _loadDuels();
-      _isInit = false;
-    }
-  }
-
-  Future<void> _loadDuels() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final accessToken = userProvider.accessToken;
-
-      if (accessToken != null) {
-        await Provider.of<DuelProvider>(context, listen: false)
-            .fetchDuels(accessToken);
-        // Убираем fetchWaitingDuels — больше не нужен
-      } else {
-        throw Exception('Нет токена доступа');
-      }
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final duelProvider = Provider.of<DuelProvider>(context);
-
-    final rejectedDuels = duelProvider.duels.where((d) => d.status == 'declined').toList();
-    final activeDuels = duelProvider.duels.where((d) => d.status == 'active').toList();
-    final finishedDuels = duelProvider.duels.where((d) => d.status == 'completed').toList();
-    final pendingDuels = duelProvider.duels.where((d) => d.status == 'pending').toList(); // Ожидающие дуэли
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Дуэли'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Отклонённые'),
-            Tab(text: 'Активные'),
-            Tab(text: 'Завершённые'),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Дуэли'),
+          bottom: TabBar(tabs: const [
             Tab(text: 'Ожидание'),
-          ],
+            Tab(text: 'В игре'),
+            Tab(text: 'Отклонено'),
+            Tab(text: 'Завершено'),
+          ]),
         ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Ошибка: $_error'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _loadDuels,
-                child: const Text('Попробовать снова'),
-              ),
-            ],
-          ),
+        body: FutureBuilder(
+          future: _load,
+          builder: (_, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snap.hasError) {
+              return Center(child: Text('Ошибка: ${snap.error}'));
+            }
+
+            return TabBarView(children: [
+              _buildList(prov.pendingDuels, token!),
+              _buildList(prov.activeDuels, token!),
+              _buildList(prov.declinedDuels, token!),
+              _buildList(prov.completedDuels, token!),
+            ]);
+          },
         ),
-      )
-          : TabBarView(
-        controller: _tabController,
-        children: [
-          DuelListView(duels: rejectedDuels, emptyText: 'Нет отклонённых дуэлей'),
-          DuelListView(duels: activeDuels, emptyText: 'Нет активных дуэлей'),
-          DuelListView(duels: finishedDuels, emptyText: 'Нет завершённых дуэлей'),
-          DuelListView(duels: pendingDuels, emptyText: 'Нет ожидающих дуэлей'), // Здесь теперь обычный список
-        ],
+        floatingActionButton: FloatingActionButton(
+          child: const Icon(Icons.person_add),
+          onPressed: () => Navigator.pushNamed(ctx, FriendsScreen.routeName),
+        ),
       ),
     );
   }
-}
 
-class DuelListView extends StatelessWidget {
-  final List<DuelModel> duels;
-  final String emptyText;
-
-  const DuelListView({super.key, required this.duels, required this.emptyText});
-
-  @override
-  Widget build(BuildContext context) {
-    if (duels.isEmpty) {
-      return Center(
-        child: Text(
-          emptyText,
-          style: const TextStyle(color: Colors.grey),
-        ),
-      );
+  Widget _buildList(List<DuelModel> list, String token) {
+    if (list.isEmpty) {
+      return Center(child: Text('Пусто', style: AppTheme.darkTheme.textTheme.bodyLarge));
     }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: duels.length,
-      itemBuilder: (context, index) {
-        final duel = duels[index];
-        return DuelCard(duel: duel);
+      itemCount: list.length,
+      itemBuilder: (c, i) {
+        final d = list[i];
+        return Card(
+          shape: AppTheme.darkTheme.cardTheme.shape,
+          color: AppTheme.darkTheme.cardTheme.color,
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          child: ListTile(
+            title: Text('${d.challenger.username} → ${d.opponent.username}',
+                style: AppTheme.darkTheme.textTheme.bodyLarge),
+            subtitle: Text('Ставка: ${d.coinsStake}  •  Статус: ${d.status}',
+                style: AppTheme.darkTheme.textTheme.bodyMedium),
+            trailing: Icon(Icons.chevron_right, color: AppColors.accentPrimary),
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                DuelDetailScreen.routeName,
+                arguments: d,
+              );
+            },
+          ),
+        );
       },
-    );
-  }
-}
-
-class DuelCard extends StatelessWidget {
-  final DuelModel duel;
-
-  const DuelCard({super.key, required this.duel});
-
-  @override
-  Widget build(BuildContext context) {
-    final opponent = duel.opponent;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: (opponent.avatar != null && opponent.avatar.isNotEmpty)
-                  ? NetworkImage(opponent.avatar)
-                  : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-              radius: 30,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    opponent.username,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('Статус: ${duel.status}'),
-                  Text('Ставка монет: ${duel.coinsStake}'),
-                  Text(
-                    'Создано: ${duel.createdAt.toLocal().toString().split(' ')[0]}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DuelDetailScreen(duel: duel),
-                  ),
-                );
-              },
-            )
-          ],
-        ),
-      ),
     );
   }
 }

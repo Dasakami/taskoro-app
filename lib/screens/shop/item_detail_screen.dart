@@ -1,606 +1,478 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/shop_model.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/magic_card.dart';
 
-class ItemDetailScreen extends StatefulWidget {
+class ShopItemDetailScreen extends StatelessWidget {
   final ShopItem item;
 
-  const ItemDetailScreen({
-    super.key,
-    required this.item,
-  });
-
-  @override
-  State<ItemDetailScreen> createState() => _ItemDetailScreenState();
-}
-
-class _ItemDetailScreenState extends State<ItemDetailScreen> with TickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-  int _quantity = 1;
-  bool _isPurchasing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _purchaseItem() async {
-    setState(() {
-      _isPurchasing = true;
-    });
-
-    final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-    final success = await shopProvider.purchaseItem(widget.item, quantity: _quantity);
-
-    setState(() {
-      _isPurchasing = false;
-    });
-
-    if (mounted) {
-      if (success) {
-        _showSuccessDialog();
-      } else {
-        _showErrorDialog(shopProvider.error ?? 'Ошибка покупки');
-      }
-    }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundSecondary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('Покупка успешна!'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Вы приобрели "${widget.item.name}"'),
-            if (_quantity > 1) Text('Количество: $_quantity'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.item.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
-                    color: widget.item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Потрачено: ${widget.item.finalPrice * _quantity}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Отлично!'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showErrorDialog(String error) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.backgroundSecondary,
-        title: const Row(
-          children: [
-            Icon(Icons.error, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Ошибка покупки'),
-          ],
-        ),
-        content: Text(error),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Понятно'),
-          ),
-        ],
-      ),
-    );
-  }
+  const ShopItemDetailScreen({Key? key, required this.item}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundSecondary,
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.backgroundSecondary,
+        title: Text(
+          item.name,
+          style: const TextStyle(color: AppColors.textPrimary),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+      ),
       body: Consumer2<ShopProvider, UserProvider>(
         builder: (context, shopProvider, userProvider, child) {
-          final canAfford = shopProvider.canAfford(widget.item, quantity: _quantity);
+          final isOwned = shopProvider.ownsItem(item.id);
+          final isEquipped = shopProvider.isItemEquipped(item.id);
+          final canAfford = _canAfford(userProvider, item);
 
-          return CustomScrollView(
-            slivers: [
-              // App Bar с изображением
-              SliverAppBar(
-                expandedHeight: 300,
-                pinned: true,
-                backgroundColor: Colors.transparent,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: AnimatedBuilder(
-                    animation: _scaleAnimation,
-                    builder: (context, child) => Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              widget.item.rarityColor.withOpacity(0.3),
-                              widget.item.rarityColor.withOpacity(0.1),
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
-                        child: widget.item.imageUrl != null
-                            ? Image.network(
-                          widget.item.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildItemIcon(),
-                        )
-                            : _buildItemIcon(),
-                      ),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Item image
+                Container(
+                  width: double.infinity,
+                  height: 250,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: item.imageUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      item.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildItemIcon(item.category),
+                    ),
+                  )
+                      : _buildItemIcon(item.category),
+                ),
+                const SizedBox(height: 20),
+
+                // Item name and category
+                Text(
+                  item.name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentPrimary.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _getCategoryName(item.category),
+                    style: const TextStyle(
+                      color: AppColors.accentPrimary,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
 
-              // Контент
-              SliverToBoxAdapter(
-                child: Padding(
+                // Description
+                Text(
+                  'Описание',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.description,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Special properties
+                if (item.category == 'boost') ...[
+                  _buildBoostInfo(),
+                  const SizedBox(height: 20),
+                ],
+
+                // Price section
+                Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Основная информация
-                      _buildMainInfo(),
-
-                      const SizedBox(height: 20),
-
-                      // Описание
-                      _buildDescription(),
-
-                      const SizedBox(height: 20),
-
-                      // Характеристики
-                      _buildCharacteristics(),
-
-                      const SizedBox(height: 20),
-
-                      // Скидка (если есть)
-                      if (widget.item.hasDiscount) ...[
-                        _buildDiscountInfo(),
-                        const SizedBox(height: 20),
+                      const Text(
+                        'Цена',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            item.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
+                            color: item.currency == 'coins' ? Colors.yellow[700] : Colors.blue[400],
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${item.price}',
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            item.currency == 'coins' ? 'монет' : 'кристаллов',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!canAfford && !isOwned) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Недостаточно средств',
+                          style: TextStyle(
+                            color: Colors.red[400],
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
-
-                      // Количество и покупка
-                      _buildPurchaseSection(canAfford),
-
-                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+
+                // User balance
+                _buildUserBalance(userProvider),
+                const SizedBox(height: 30),
+
+                // Action button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: _buildActionButton(context, shopProvider, userProvider, isOwned, isEquipped, canAfford),
+                ),
+              ],
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildItemIcon() {
+  Widget _buildItemIcon(String category) {
     IconData icon;
-    switch (widget.item.type) {
-      case ItemType.avatar_frame:
-        icon = Icons.person;
-        break;
+    Color color;
 
-      case ItemType.boost:
+    switch (category) {
+      case 'title':
+        icon = Icons.title;
+        color = AppColors.accentPrimary;
+        break;
+      case 'avatar_frame':
+        icon = Icons.account_circle;
+        color = AppColors.accentSecondary;
+        break;
+      case 'background':
+        icon = Icons.wallpaper;
+        color = AppColors.accentTertiary;
+        break;
+      case 'boost':
         icon = Icons.flash_on;
+        color = Colors.orange;
         break;
-      case ItemType.effect:
-          icon = Icons.lightbulb;
-        break;
-      case ItemType.background:
-        icon = Icons.palette;
-        break;
-      case ItemType.title:
-        icon = Icons.color_lens;
-        break;
-      case ItemType.equipment:
-        icon = Icons.build;
-        break;
+      default:
+        icon = Icons.shopping_bag;
+        color = AppColors.textSecondary;
     }
 
-    return Center(
-      child: Icon(
-        icon,
-        size: 120,
-        color: widget.item.rarityColor,
-      ),
-    );
+    return Icon(icon, color: color, size: 100);
   }
 
-  Widget _buildMainInfo() {
-    return MagicCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.item.name,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: widget.item.rarityColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: widget.item.rarityColor),
-                  ),
-                  child: Text(
-                    widget.item.rarityName,
-                    style: TextStyle(
-                      color: widget.item.rarityColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              widget.item.typeName,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Цена
-            Row(
-              children: [
-                Icon(
-                  widget.item.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
-                  size: 24,
-                  color: widget.item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                ),
-                const SizedBox(width: 8),
-                if (widget.item.hasDiscount) ...[
-                  Text(
-                    '${widget.item.price}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 18,
-                      decoration: TextDecoration.lineThrough,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  '${widget.item.finalPrice}',
-                  style: TextStyle(
-                    color: widget.item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
-                  ),
-                ),
-                const Spacer(),
-                if (widget.item.hasDiscount)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '-${widget.item.discountPercent}%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
+  Widget _buildBoostInfo() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
-  }
-
-  Widget _buildDescription() {
-    return MagicCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Описание',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              widget.item.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                height: 1.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCharacteristics() {
-    return MagicCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Характеристики',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildCharacteristicRow('Тип', widget.item.typeName),
-            _buildCharacteristicRow('Редкость', widget.item.rarityName),
-            _buildCharacteristicRow('Валюта', widget.item.currency == 'coins' ? 'Монеты' : 'Гемы'),
-            if (widget.item.metadata != null) ...[
-              ...widget.item.metadata!.entries.map((entry) =>
-                  _buildCharacteristicRow(entry.key, entry.value.toString())),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCharacteristicRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$label:',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
+          const Text(
+            'Эффект буста',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.end,
+          const SizedBox(height: 12),
+          if (item.boostMultiplier != null)
+            Row(
+              children: [
+                const Icon(Icons.trending_up, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Множитель: x${item.boostMultiplier}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
+          if (item.boostDuration != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.access_time, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Длительность: ${item.boostDuration} часов',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserBalance(UserProvider userProvider) {
+    if (userProvider.user == null) return Container();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ваш баланс',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.monetization_on, color: Colors.yellow[700], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                '${userProvider.user!.coins} монет',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.diamond, color: Colors.blue[400], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                '${userProvider.user!.gems} кристаллов',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDiscountInfo() {
-    final timeLeft = widget.item.discountEndDate!.difference(DateTime.now());
-    final daysLeft = timeLeft.inDays;
-    final hoursLeft = timeLeft.inHours % 24;
+  Widget _buildActionButton(BuildContext context, ShopProvider shopProvider, UserProvider userProvider,
+      bool isOwned, bool isEquipped, bool canAfford) {
 
-    return MagicCard(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [
-              Colors.red.withOpacity(0.1),
-              Colors.orange.withOpacity(0.1),
-            ],
+    if (shopProvider.isLoading) {
+      return ElevatedButton(
+        onPressed: null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.accentPrimary.withOpacity(0.5),
+        ),
+        child: const CircularProgressIndicator(color: AppColors.textPrimary),
+      );
+    }
+
+    if (isOwned) {
+      if (item.category == 'boost') {
+        return ElevatedButton(
+          onPressed: isEquipped ? null : () => _activateBoost(context, shopProvider),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isEquipped ? AppColors.textSecondary : AppColors.accentPrimary,
           ),
+          child: Text(
+            isEquipped ? 'Активен' : 'Активировать',
+            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+          ),
+        );
+      } else {
+        return ElevatedButton(
+          onPressed: () => _toggleEquip(context, shopProvider, isEquipped),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isEquipped ? AppColors.accentSecondary : AppColors.accentPrimary,
+          ),
+          child: Text(
+            isEquipped ? 'Снять' : 'Экипировать',
+            style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+          ),
+        );
+      }
+    } else {
+      return ElevatedButton(
+        onPressed: canAfford ? () => _purchaseItem(context, shopProvider, userProvider) : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: canAfford ? AppColors.accentPrimary : AppColors.textSecondary,
         ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.local_fire_department, color: Colors.red),
-                const SizedBox(width: 8),
-                Text(
-                  'Ограниченное предложение!',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Скидка ${widget.item.discountPercent}% заканчивается через ${daysLeft}д ${hoursLeft}ч',
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+        child: Text(
+          canAfford ? 'Купить' : 'Недостаточно средств',
+          style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
         ),
-      ),
-    );
+      );
+    }
   }
 
-  Widget _buildPurchaseSection(bool canAfford) {
-    return MagicCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Количество
-            Row(
-              children: [
-                Text(
-                  'Количество:',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: _quantity > 1 ? () {
-                        setState(() {
-                          _quantity--;
-                        });
-                      } : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$_quantity',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _quantity++;
-                        });
-                      },
-                      icon: const Icon(Icons.add),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+  bool _canAfford(UserProvider userProvider, ShopItem item) {
+    if (userProvider.user == null) return false;
 
-            const SizedBox(height: 16),
+    if (item.currency == 'coins') {
+      return userProvider.user!.coins >= item.price;
+    } else {
+      return userProvider.user!.gems >= item.price;
+    }
+  }
 
-            // Общая стоимость
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundSecondary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    'Итого:',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const Spacer(),
-                  Icon(
-                    widget.item.currency == 'coins' ? Icons.monetization_on : Icons.diamond,
-                    color: widget.item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${widget.item.finalPrice * _quantity}',
-                    style: TextStyle(
-                      color: widget.item.currency == 'coins' ? AppColors.accentPrimary : Colors.purple,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  String _getCategoryName(String category) {
+    switch (category) {
+      case 'title':
+        return 'Титул';
+      case 'avatar_frame':
+        return 'Рамка';
+      case 'background':
+        return 'Фон';
+      case 'boost':
+        return 'Буст';
+      default:
+        return 'Предмет';
+    }
+  }
 
-            const SizedBox(height: 20),
+  void _purchaseItem(BuildContext context, ShopProvider shopProvider, UserProvider userProvider) async {
+    final success = await shopProvider.purchaseItem(item.id);
 
-            // Кнопка покупки
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: canAfford && !_isPurchasing ? _purchaseItem : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: canAfford ? AppColors.accentPrimary : Colors.grey,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isPurchasing
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                  canAfford ? 'Купить' : 'Недостаточно средств',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ),
-          ],
+    if (success) {
+      // Update user currency locally
+      userProvider.updateCurrency(
+        coins: item.currency == 'coins' ? -item.price : 0,
+        gems: item.currency == 'gems' ? -item.price : 0,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.name} успешно куплен!'),
+          backgroundColor: Colors.green,
         ),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(shopProvider.error ?? 'Ошибка покупки'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _toggleEquip(BuildContext context, ShopProvider shopProvider, bool isEquipped) async {
+    final purchase = shopProvider.purchases.firstWhere((p) => p.item.id == item.id);
+
+    bool success;
+    if (isEquipped) {
+      success = await shopProvider.unequipItem(purchase.id);
+    } else {
+      success = await shopProvider.equipItem(purchase.id);
+    }
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isEquipped ? 'Предмет снят' : 'Предмет экипирован'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(shopProvider.error ?? 'Ошибка'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _activateBoost(BuildContext context, ShopProvider shopProvider) async {
+    final purchase = shopProvider.purchases.firstWhere((p) => p.item.id == item.id);
+
+    final success = await shopProvider.equipItem(purchase.id);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Буст активирован!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(shopProvider.error ?? 'Ошибка активации'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

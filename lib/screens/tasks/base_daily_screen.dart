@@ -1,66 +1,88 @@
 import 'package:flutter/material.dart';
-import 'package:taskoro/theme/app_theme.dart';
-import 'package:taskoro/widgets/magic_card.dart';
+import 'package:provider/provider.dart';
+import '../../providers/base_daily_provider.dart';
+import '../../models/base_task.dart';
+import '../../widgets/magic_card.dart';
+import '../../theme/app_theme.dart';
 
 class BaseDailyScreen extends StatelessWidget {
+  static const routeName = '/base-dailies';
   const BaseDailyScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            'Базовые цели на день',
-            style: Theme.of(context).textTheme.displaySmall,
-          ),
-          const SizedBox(height: 16),
+    final prov = context.watch<BaseDailyProvider>();
 
-          MagicCard(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Доступные цели',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: 5,
-                    itemBuilder: (context, index) => ListTile(
-                      leading: const Icon(Icons.flag, color: AppColors.accentTertiary),
-                      title: Text(
-                        'Ежедневная цель ${index + 1}',
-                        style: const TextStyle(color: AppColors.textPrimary),
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!prov.loading && prov.dailies.isEmpty && prov.error == null) {
+        prov.fetch();
+      }
+    });
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Базовые ежедневки')),
+      body: prov.loading
+          ? const Center(child: CircularProgressIndicator())
+          : prov.error != null
+          ? Center(child: Text(prov.error!))
+          : RefreshIndicator(
+        onRefresh: prov.fetch,
+        child: prov.dailies.isEmpty
+            ? ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 80),
+            Center(child: Text('Нет доступных ежедневок')),
+          ],
+        )
+            : ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: prov.dailies.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (_, i) {
+            final task = prov.dailies[i];
+            return MagicCard(
+              child: ListTile(
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/base-daily-detail',
+                  arguments: task,
+                ),
+                leading: const Icon(Icons.calendar_today,
+                    color: AppColors.accentTertiary),
+                title: Text(task.title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold)),
+                subtitle: Text(
+                  task.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: ElevatedButton(
+                  onPressed: task.completed
+                      ? null
+                      : () async {
+                    final ok =
+                    await prov.complete(task);
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(
+                      SnackBar(
+                        content: Text(ok
+                            ? 'Получено ${task.xpReward} XP'
+                            : 'Ошибка'),
                       ),
-                      subtitle: Text(
-                        'Описание ежедневной цели ${index + 1}',
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                      trailing: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accentTertiary,
-                        ),
-                        child: const Text('Добавить'),
-                      ),
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                      AppColors.accentTertiary),
+                  child:
+                  Text(task.completed ? 'Готово' : 'Выполнить'),
+                ),
               ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }

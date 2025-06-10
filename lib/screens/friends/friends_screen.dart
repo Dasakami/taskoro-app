@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/friends_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
+import '../duels/task_stake_screen.dart';
 import 'find_friends_screen.dart';
 import 'friend_profile_screen.dart';
 import 'friend_requests_screen.dart';
@@ -11,12 +12,13 @@ import 'friend_requests_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
-
+  static const routeName = '/friends';
   @override
   State<FriendsScreen> createState() => _FriendsScreenState();
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
+
   @override
   void initState() {
     super.initState();
@@ -276,17 +278,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                           color: AppColors.accentPrimary,
                                           iconSize: 20,
                                         ),
+                                        // snippet из вашего GridView.builder
                                         IconButton(
                                           icon: const Icon(Icons.sports_kabaddi),
-                                          onPressed: () {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Функция дуэлей пока недоступна'),
-                                              ),
-                                            );
-                                          },
                                           color: AppColors.accentSecondary,
                                           iconSize: 20,
+                                          onPressed: () {
+                                            Navigator.of(context).pushNamed(
+                                              TaskStakeScreen.routeName,
+                                              arguments: friend.id,
+                                            );
+                                          },
                                         ),
                                       ],
                                     ),
