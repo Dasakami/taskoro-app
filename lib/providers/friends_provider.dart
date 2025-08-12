@@ -12,7 +12,7 @@ class FriendsProvider with ChangeNotifier {
 
   FriendsProvider({
     required this.userProvider,
-    this.baseUrl = 'http://192.168.232.53:8000',
+    this.baseUrl = 'https://taskoro.onrender.com',
   });
 
   // --- State: друзья ---
@@ -62,7 +62,8 @@ class FriendsProvider with ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/friends/');
-      final resp = await http.get(url, headers: _headers);
+      final resp = await userProvider.authGet(url);
+
       debugPrint('fetchFriends => ${resp.statusCode}: ${resp.body}');
       if (resp.statusCode == 200) {
         final data = json.decode(resp.body) as List<dynamic>;
@@ -79,7 +80,7 @@ class FriendsProvider with ChangeNotifier {
 
   Future<Friend> fetchUserProfile(int userId) async {
     final url = Uri.parse('$baseUrl/api/users/$userId/');
-    final resp = await http.get(url, headers: _headers);
+    final resp = await userProvider.authGet(url);
     debugPrint('fetchUserProfile($userId) => ${resp.statusCode}: ${resp.body}');
     if (resp.statusCode == 200) {
       return Friend.fromJson(json.decode(resp.body) as Map<String, dynamic>);
@@ -89,7 +90,8 @@ class FriendsProvider with ChangeNotifier {
 
   Future<bool> removeFriend(int userId) async {
     final url = Uri.parse('$baseUrl/api/friends/friend/remove/$userId/');
-    final resp = await http.delete(url, headers: _headers);
+    final resp = await userProvider.authDelete(url);
+
     debugPrint('removeFriend($userId) => ${resp.statusCode}');
     if (resp.statusCode == 200 || resp.statusCode == 204) {
       _friends.removeWhere((f) => f.id == userId);
@@ -112,7 +114,7 @@ class FriendsProvider with ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/friends/requests/');
-      final resp = await http.get(url, headers: _headers);
+      final resp = await userProvider.authGet(url);
       debugPrint('fetchFriendRequests => ${resp.statusCode}: ${resp.body}');
       if (resp.statusCode == 200) {
         final map = json.decode(resp.body) as Map<String, dynamic>;
@@ -169,7 +171,8 @@ class FriendsProvider with ChangeNotifier {
 
   Future<bool> sendFriendRequest(int userId) async {
     final url = Uri.parse('$baseUrl/api/friends/request/send/$userId/');
-    final resp = await http.post(url, headers: _headers);
+    final resp = await userProvider.authPost(url);
+
     debugPrint('sendFriendRequest($userId) => ${resp.statusCode}: ${resp.body}');
     final ok = resp.statusCode == 200 || resp.statusCode == 201;
     if (ok) await fetchFriendRequests();
@@ -178,7 +181,7 @@ class FriendsProvider with ChangeNotifier {
 
   Future<void> acceptFriendRequest(int requestId) async {
     final url = Uri.parse('$baseUrl/api/friends/request/accept/$requestId/');
-    final resp = await http.post(url, headers: _headers);
+    final resp = await userProvider.authPost(url);
     debugPrint('acceptFriendRequest($requestId) => ${resp.statusCode}: ${resp.body}');
     if (resp.statusCode == 200 || resp.statusCode == 204) {
       await fetchFriendRequests();
@@ -191,7 +194,7 @@ class FriendsProvider with ChangeNotifier {
     if (userProvider.accessToken == null) return false;
 
     final url = Uri.parse('$baseUrl/api/friends/request/decline/$requestId/');
-    final resp = await http.post(url, headers: _headers);
+    final resp = await userProvider.authPost(url);
     debugPrint('declineFriendRequest($requestId) => ${resp.statusCode}: ${resp.body}');
 
     if (resp.statusCode == 200 || resp.statusCode == 204) {
@@ -211,7 +214,7 @@ class FriendsProvider with ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/friends/request/cancel/$requestId/');
-      final response = await http.post(url, headers: _headers);
+      final response = await userProvider.authPost(url);
       debugPrint('cancelFriendRequest($requestId) => '
           '${response.statusCode}: ${response.body}');
 
@@ -249,7 +252,7 @@ class FriendsProvider with ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/users/search/?q=$query');
-      final response = await http.get(url, headers: _headers);
+      final response = await userProvider.authGet(url);
       debugPrint('searchUsers("$query") => ${response.statusCode}: ${response.body}');
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);

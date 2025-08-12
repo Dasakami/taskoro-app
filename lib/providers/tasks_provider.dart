@@ -10,7 +10,7 @@ class TasksProvider extends ChangeNotifier {
 
   TasksProvider({
     required this.userProvider,
-    this.baseUrl = 'http://192.168.232.53:8000',
+    this.baseUrl = 'https://taskoro.onrender.com',
   });
 
   List<TaskModel> _tasks = [];
@@ -135,11 +135,11 @@ class TasksProvider extends ChangeNotifier {
       final taskData = task.toJson();
       taskData.remove('id'); // Удаляем id для создания
 
-      final response = await http.post(
-        url,
-        headers: _headers,
+      final response = await userProvider.authPost(
+        Uri.parse('$baseUrl/api/tasks/tasks/'),
         body: jsonEncode(taskData),
       );
+
 
       if (response.statusCode == 201) {
         final createdTask = TaskModel.fromJson(jsonDecode(response.body));
@@ -169,11 +169,11 @@ class TasksProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/tasks/tasks/${task.id}/');
-      final response = await http.put(
+      final response = await userProvider.authPut(
         url,
-        headers: _headers,
         body: jsonEncode(task.toJson()),
       );
+
 
       if (response.statusCode == 200) {
         final updatedTask = TaskModel.fromJson(jsonDecode(response.body));
@@ -206,7 +206,8 @@ class TasksProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse('$baseUrl/api/tasks/tasks/$taskId/');
-      final response = await http.delete(url, headers: _headers);
+      final response = await userProvider.authDelete(url);
+
 
       if (response.statusCode == 204) {
         _tasks.removeWhere((task) => task.id == taskId);
@@ -239,7 +240,7 @@ class TasksProvider extends ChangeNotifier {
       final url = Uri.parse('$baseUrl/api/tasks/tasks/$taskId/complete/');
       debugPrint("Вызов API для выполнения задачи: $url");
 
-      final response = await http.post(url, headers: _headers);
+      final response = await userProvider.authPost(url);
       debugPrint("Статус ответа API: ${response.statusCode}");
 
       if (response.statusCode == 200) {

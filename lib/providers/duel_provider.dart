@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/duel_model.dart';
 
 class DuelProvider extends ChangeNotifier {
-  final String baseUrl = 'http://192.168.232.53:8000/api/duels';
+  final String baseUrl = 'https://taskoro.onrender.com/api/duels';
   List<DuelModel> _duels = [];
 
   List<DuelModel> get duels => List.unmodifiable(_duels);
@@ -73,7 +73,7 @@ class DuelProvider extends ChangeNotifier {
   }) async {
     // если у вас в бекенде одно поле task → ForeignKey,
     // берём первый из списка (или по-вашему логика)
-    final uri = Uri.parse('http://192.168.232.53:8000/api/duels/duels/');
+    final uri = Uri.parse('https://taskoro.onrender.com/api/duels/duels/');
     final body = jsonEncode({
       'opponent_id': opponentId,
       'task': taskIds.first,      // <- вместо task_ids

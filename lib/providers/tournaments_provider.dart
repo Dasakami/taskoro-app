@@ -11,7 +11,7 @@ class TournamentsProvider with ChangeNotifier {
 
   TournamentsProvider({
     required this.userProvider,
-    this.baseUrl = 'http://192.168.232.53:8000',
+    this.baseUrl = 'https://taskoro.onrender.com',
   });
 
   final List<Tournament> _tournaments = [];
@@ -31,7 +31,7 @@ class TournamentsProvider with ChangeNotifier {
 
   Future<void> fetchTournaments() async {
     final url = Uri.parse('$baseUrl/api/tournaments/');
-    final resp = await http.get(url);
+    final resp = await userProvider.authGet(url);
 
     if (resp.statusCode == 200) {
       final List data = jsonDecode(resp.body);
@@ -61,7 +61,9 @@ class TournamentsProvider with ChangeNotifier {
 
   Future<void> joinTournament(int id) async {
     final url = Uri.parse('$baseUrl/api/tournaments/$id/join/');
-    final resp = await http.post(url, headers: _authHeaders());
+
+    final resp = await userProvider.authPost(url, headers: _authHeaders() );
+
 
     if (resp.statusCode == 200 || resp.statusCode == 201) {
       // Можно обновить локальный стейт, если нужно
@@ -82,7 +84,7 @@ class TournamentsProvider with ChangeNotifier {
 
   Future<List<Participant>> fetchLeaderboard(int tournamentId) async {
     final url = Uri.parse('$baseUrl/api/tournaments/$tournamentId/leaderboard/');
-    final resp = await http.get(url, headers: _authHeaders());
+    final resp = await userProvider.authGet(url);
 
     if (resp.statusCode == 200) {
       final List data = jsonDecode(resp.body);

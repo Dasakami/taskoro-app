@@ -9,6 +9,7 @@ import '../models/character_class_model.dart';
 import '../models/user_model.dart';
 import '../screens/main/daily_mission.dart';
 import '../screens/main/daily_motivation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
@@ -17,7 +18,7 @@ class UserProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   String? _accessToken;
   String? _refreshToken;
-  final String _baseUrl = 'http://192.168.232.53:8000/api';
+  final String _baseUrl = 'https://taskoro.onrender.com/api';
 
   UserModel? get user => _user;
 
@@ -50,7 +51,7 @@ class UserProvider extends ChangeNotifier {
 
   /// Логин с сервера
   Future<void> login(String username, String password) async {
-    final url = Uri.parse('http://192.168.232.53:8000/api/token/');
+    final url = Uri.parse('$_baseUrl/token/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -62,20 +63,16 @@ class UserProvider extends ChangeNotifier {
     if (response.statusCode == 200) {
       _accessToken = data['access'];
       _refreshToken = data['refresh'];
-
+      await _saveTokens(); // 👈 сохраняем токены
+      print('✅ Сохраняю токены: $_accessToken | $_refreshToken');
       await Future.wait([fetchUserData(), fetchMainData()]);
-
       _isAuthenticated = true;
       notifyListeners();
     } else {
       throw Exception(data['detail'] ?? 'Ошибка авторизации');
     }
-
-    if (response.statusCode == 401) {
-      await refreshAccessToken();
-      return fetchUserData(); // повторная попытка
-    }
   }
+
 
   /// Получение данных пользователя с сервера, включая профиль, миссию и мотивацию
   Future<void> fetchUserData() async {
@@ -91,6 +88,36 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+
+  Future<void> _saveTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    print('🧪 Проверка prefs: ${prefs.getString('access_token')}');
+    await prefs.setString('access_token', _accessToken!);
+    await prefs.setString('refresh_token', _refreshToken!);
+  }
+
+  Future<void> loadFromStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    _accessToken = prefs.getString('access_token');
+    _refreshToken = prefs.getString('refresh_token');
+    print('📦 Загруженные токены: $_accessToken | $_refreshToken');
+
+    if (_accessToken != null && _refreshToken != null) {
+      try {
+        await fetchUserData();
+        await fetchMainData();
+        _isAuthenticated = true;
+      } catch (_) {
+        logout();
+      }
+    } else {
+      _isAuthenticated = false;
+    }
+    notifyListeners();
+  }
+
+
 
   Future<void> fetchMainData() async {
     if (_accessToken == null) return;
@@ -199,14 +226,23 @@ class UserProvider extends ChangeNotifier {
       throw Exception('Не удалось обновить выбранный класс');
     }
   }
+  Future<void> _clearTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+  }
+
   /// Выход
+
   void logout() {
     _user = null;
     _accessToken = null;
     _refreshToken = null;
     _isAuthenticated = false;
+    _clearTokens(); // 👈 очищаем токены
     notifyListeners();
   }
+
 
   /// Прокачка опыта (локально)
   void updateExperience(int amount) {
@@ -251,7 +287,7 @@ class UserProvider extends ChangeNotifier {
   }) async {
     if (_accessToken == null) throw Exception('User not authenticated');
 
-    final url = Uri.parse('http://192.168.232.53:8000/api/users/me/edit/');
+    final url = Uri.parse('https://taskoro.onrender.com/api/users/me/edit/');
 
     http.Response response;
 
@@ -312,6 +348,64 @@ class UserProvider extends ChangeNotifier {
     return response;
   }
 
+  Future<http.Response> authPost(Uri url, {Map<String, String>? headers, Object? body}) async {
+    var mergedHeaders = _authHeaders();
+    if (headers != null) mergedHeaders.addAll(headers);
+
+    var response = await http.post(url, headers: mergedHeaders, body: body);
+
+    if (response.statusCode == 401) {
+      await refreshAccessToken();
+      response = await http.post(url, headers: mergedHeaders, body: body);
+    }
+
+    return response;
+  }
+
+  Future<http.Response> authPatch(Uri url, {Map<String, String>? headers, Object? body}) async {
+    var mergedHeaders = _authHeaders();
+    if (headers != null) mergedHeaders.addAll(headers);
+
+    var response = await http.patch(url, headers: mergedHeaders, body: body);
+
+    if (response.statusCode == 401) {
+      await refreshAccessToken();
+      response = await http.patch(url, headers: mergedHeaders, body: body);
+    }
+
+    return response;
+  }
+
+
+  Future<http.Response> authPut(Uri url, {Map<String, String>? headers, Object? body}) async {
+    var mergedHeaders = _authHeaders();
+    if (headers != null) mergedHeaders.addAll(headers);
+
+    var response = await http.put(url, headers: mergedHeaders, body: body);
+
+    if (response.statusCode == 401) {
+      await refreshAccessToken();
+      response = await http.put(url, headers: mergedHeaders, body: body);
+    }
+
+    return response;
+  }
+
+  Future<http.Response> authDelete(Uri url, {Map<String, String>? headers}) async {
+    var mergedHeaders = _authHeaders();
+    if (headers != null) mergedHeaders.addAll(headers);
+
+    var response = await http.delete(url, headers: mergedHeaders);
+
+    if (response.statusCode == 401) {
+      await refreshAccessToken();
+      response = await http.delete(url, headers: mergedHeaders);
+    }
+
+    return response;
+  }
+
+
 
   /// Заголовки авторизации
   Map<String, String> _authHeaders() {
@@ -334,11 +428,18 @@ class UserProvider extends ChangeNotifier {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       _accessToken = data['access'];
+
+      // Сохраняем новый access токен локально
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('access_token', _accessToken!);
+      print('♻️ Refreshing access token...');
+
       notifyListeners();
     } else {
       logout();
     }
   }
+
 
   Future<void> refreshMainData() async {
     await Future.wait([

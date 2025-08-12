@@ -2,12 +2,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:taskoro/providers/user_provider.dart';
 
 import '../models/shop_model.dart';
 
 class ShopProvider extends ChangeNotifier {
-  final String _baseUrl = 'http://192.168.232.53:8000/api';
+  final UserProvider userProvider;
+  final String _baseUrl = 'https://taskoro.onrender.com/api';
   String? _accessToken;
+
+  ShopProvider({required this.userProvider});
 
   List<ShopItem> _items = [];
   List<Purchase> _purchases = [];
@@ -61,10 +65,7 @@ class ShopProvider extends ChangeNotifier {
         url += '?category=$category';
       }
 
-      final response = await http.get(
-        Uri.parse(url),
-        headers: _authHeaders,
-      );
+      final response = await userProvider.authGet(Uri.parse(url));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -90,11 +91,9 @@ class ShopProvider extends ChangeNotifier {
     _setError(null);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/shop/purchases/'),
-        headers: _authHeaders,
-        body: jsonEncode({'item_id': itemId}),
-      );
+
+      final response = await userProvider.authPost(Uri.parse('$_baseUrl/shop/purchases/'), body: jsonEncode({'item_id': itemId}), headers: _authHeaders);
+
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -120,10 +119,7 @@ class ShopProvider extends ChangeNotifier {
     if (_accessToken == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/shop/purchases/'),
-        headers: _authHeaders,
-      );
+      final response = await userProvider.authGet(Uri.parse('$_baseUrl/shop/purchases/'));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -138,10 +134,9 @@ class ShopProvider extends ChangeNotifier {
   // Equip item
   Future<bool> equipItem(String purchaseId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/shop/purchases/$purchaseId/equip/'),
-        headers: _authHeaders,
-      );
+
+      final response = await userProvider.authPost(Uri.parse('$_baseUrl/shop/purchases/$purchaseId/equip/'));
+
 
       if (response.statusCode == 200) {
         await fetchUserPurchases(); // Refresh purchases
@@ -159,10 +154,8 @@ class ShopProvider extends ChangeNotifier {
   // Unequip item
   Future<bool> unequipItem(String purchaseId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/shop/purchases/$purchaseId/unequip/'),
-        headers: _authHeaders,
-      );
+      final response = await userProvider.authPost(Uri.parse('$_baseUrl/shop/purchases/$purchaseId/unequip/'));
+
 
       if (response.statusCode == 200) {
         await fetchUserPurchases(); // Refresh purchases
@@ -182,10 +175,8 @@ class ShopProvider extends ChangeNotifier {
     if (_accessToken == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/shop/boosts/'),
-        headers: _authHeaders,
-      );
+
+      final response = await userProvider.authGet(Uri.parse('$_baseUrl/shop/boosts/'));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -200,10 +191,8 @@ class ShopProvider extends ChangeNotifier {
   // Fetch chests
   Future<void> fetchChests() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/shop/chests/'),
-        headers: _authHeaders,
-      );
+
+      final response = await userProvider.authGet(Uri.parse('$_baseUrl/shop/chests/'));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -221,10 +210,8 @@ class ShopProvider extends ChangeNotifier {
     _setError(null);
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/shop/chests/$chestId/open/'),
-        headers: _authHeaders,
-      );
+
+      final response = await userProvider.authPost(Uri.parse('$_baseUrl/shop/chests/$chestId/open/'));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

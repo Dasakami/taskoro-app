@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -32,19 +34,66 @@ import 'package:taskoro/screens/tournament_detail.dart';
 import 'package:taskoro/screens/tournaments_screen.dart';
 import 'package:taskoro/theme/app_theme.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print('📬 bg message: ${message.messageId}');
+}
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  final userProvider = UserProvider();
+  await userProvider.loadFromStorage();
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  runApp( MyApp(userProvider: userProvider));
+
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+
+
+class MyApp extends StatefulWidget {
+  final UserProvider userProvider;
+  const MyApp({required this.userProvider, super.key});
+
+  @override
+  _MyAppState createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    final fb = FirebaseMessaging.instance;
+
+    // 1) get and send the token
+    fb.getToken().then((token) {
+      print('🔑 FCM token: $token');
+      // POST it to your Django API…
+    });
+
+    // 2) foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
+      print('📨 onMessage: ${msg.notification?.title}');
+      // show a local dialog/snackbar, etc.
+    });
+
+    // 3) user tapped notification (app in bg/terminated)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage msg) {
+      print('🚀 onMessageOpenedApp: ${msg.data}');
+      // navigate to a specific screen, etc.
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => ActivityLogProvider()),
+        ChangeNotifierProvider<UserProvider>.value(value: widget.userProvider),
+
+        ChangeNotifierProvider<ActivityLogProvider>(
+          create: (context) => ActivityLogProvider(
+            userProvider: Provider.of<UserProvider>(context, listen: false),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => DuelProvider()),
         ChangeNotifierProvider(
           create: (ctx) => BaseTaskProvider(ctx.read<UserProvider>()),
@@ -74,8 +123,14 @@ class MyApp extends StatelessWidget {
           create: (context) => NotesProvider(context.read<UserProvider>()),
           update: (_, userProvider, __) => NotesProvider(userProvider),
         ),
-        ChangeNotifierProvider(create: (_) => AchievementProvider()),
-        ChangeNotifierProvider(create: (_) => ShopProvider()),
+        ChangeNotifierProxyProvider<UserProvider, AchievementProvider>(
+          create: (context) => AchievementProvider(userProvider: Provider.of<UserProvider>(context, listen: false)),
+          update: (_, userProvider, achievementProvider) => AchievementProvider(userProvider: userProvider),
+        ),
+        ChangeNotifierProxyProvider<UserProvider, ShopProvider>(
+          create: (_) => ShopProvider(userProvider: UserProvider()),
+          update: (_, userProvider, prev) => ShopProvider(userProvider: userProvider),
+        ),
         // Добавляем FriendsProvider, который зависит от UserProvider
         ChangeNotifierProvider(
           create: (context) => FriendsProvider(
@@ -97,9 +152,9 @@ class MyApp extends StatelessWidget {
           "/base-daily-detail": (context) => const BaseDailyDetailScreen(),
           TournamentsScreen.routeName: (_) => TournamentsScreen(),
           LeaderboardScreen.routeName: (_) => LeaderboardScreen(),
-          TournamentDetailScreen.routeName: (_) => TournamentDetailScreen(),
           DuelsScreen.routeName: (_) => DuelsScreen(),
           CreateDuelScreen.routeName: (_) => CreateDuelScreen(),
+          TournamentDetailScreen.routeName: (_) => TournamentDetailScreen(),
           TaskStakeScreen.routeName: (_) => const TaskStakeScreen(),
           FriendsScreen.routeName: (_) => const FriendsScreen(),
           DuelDetailScreen.routeName  : (_) => const DuelDetailScreen(),
@@ -116,5 +171,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 
 

@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:taskoro/providers/user_provider.dart';
 
 import '../models/achievement_model.dart';
 
 class AchievementProvider extends ChangeNotifier {
   List<Achievement> _achievements = [];
-
+  final UserProvider userProvider;
+  AchievementProvider({required this.userProvider});
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -16,7 +18,7 @@ class AchievementProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  final String apiUrl = 'http://192.168.232.53:8000/api/history/achievements/';
+  final String apiUrl = 'https://taskoro.onrender.com/api/history/achievements/';
 
   Future<void> fetchAchievements(String accessToken) async {
     _isLoading = true;
@@ -24,13 +26,8 @@ class AchievementProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await http.get(
-        Uri.parse(apiUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      );
+
+      final response = await userProvider.authGet(Uri.parse(apiUrl),);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

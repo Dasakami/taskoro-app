@@ -20,6 +20,8 @@ class AppColors {
   static const gradientPrimary = [Color(0xFF6633FF), Color(0xFF33CCFF)];
   static const gradientSecondary = [Color(0xFFFF3366), Color(0xFFFF33CC)];
   static const gradientAccent = [Color(0xFF33FFCC), Color(0xFF6633FF)];
+
+
 }
 
 class AppTheme {

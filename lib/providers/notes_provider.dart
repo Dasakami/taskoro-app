@@ -11,17 +11,12 @@ class NotesProvider with ChangeNotifier {
 
   NotesProvider(this.userProvider);
 
-
   List<Note> get activeNotes => _notes.where((n) => !n.isDeleted).toList();
   List<Note> get deletedNotes => _notes.where((n) => n.isDeleted).toList();
 
   Future<void> fetchNotes() async {
-    final token = userProvider.accessToken;
-    if (token == null) return;
-
-    final response = await http.get(
-      Uri.parse('http://192.168.232.53:8000/api/notes/notes/'),
-      headers: {'Authorization': 'Bearer $token'},
+    final response = await userProvider.authGet(
+      Uri.parse('https://taskoro.onrender.com/api/notes/notes/'),
     );
 
     if (response.statusCode == 200) {
@@ -32,31 +27,22 @@ class NotesProvider with ChangeNotifier {
   }
 
   Future<void> createNote(String title, String? content) async {
-    final token = userProvider.accessToken;
-    final response = await http.post(
-      Uri.parse('http://192.168.232.53:8000/api/notes/notes/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
+    final response = await userProvider.authPost(
+      Uri.parse('https://taskoro.onrender.com/api/notes/notes/'),
       body: json.encode({
         'title': title,
         'content': content,
       }),
     );
+
     if (response.statusCode == 201) {
       await fetchNotes();
     }
   }
 
   Future<void> updateNote(int id, String title, String? content) async {
-    final token = userProvider.accessToken;
-    await http.put(
-      Uri.parse('http://192.168.232.53:8000/api/notes/notes/$id/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
+    await userProvider.authPut(
+      Uri.parse('https://taskoro.onrender.com/api/notes/notes/$id/'),
       body: json.encode({
         'title': title,
         'content': content,
@@ -66,29 +52,18 @@ class NotesProvider with ChangeNotifier {
   }
 
   Future<void> deleteNote(int id) async {
-    final token = userProvider.accessToken;
-    await http.patch(
-      Uri.parse('http://192.168.232.53:8000/api/notes/notes/$id/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
+    await userProvider.authPatch(
+      Uri.parse('https://taskoro.onrender.com/api/notes/notes/$id/'),
       body: json.encode({'is_deleted': true}),
     );
     await fetchNotes();
   }
 
   Future<void> restoreNote(int id) async {
-    final token = userProvider.accessToken;
-    await http.patch(
-      Uri.parse('http://192.168.232.53:8000/api/notes/notes/$id/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
+    await userProvider.authPatch(
+      Uri.parse('https://taskoro.onrender.com/api/notes/notes/$id/'),
       body: json.encode({'is_deleted': false}),
     );
     await fetchNotes();
   }
-
 }

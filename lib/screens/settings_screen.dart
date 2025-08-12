@@ -115,15 +115,6 @@ class SettingsScreen extends StatelessWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.security, color: AppColors.accentSecondary),
-                    title: const Text(
-                      'Безопасность',
-                      style: TextStyle(color: AppColors.textPrimary),
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textSecondary),
-                    onTap: () {},
-                  ),
-                  ListTile(
                     leading: const Icon(Icons.delete_forever, color: AppColors.error),
                     title: const Text(
                       'Удалить аккаунт',
