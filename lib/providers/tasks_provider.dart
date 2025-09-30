@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../models/task_model.dart';
 import 'user_provider.dart';
 
@@ -10,7 +9,7 @@ class TasksProvider extends ChangeNotifier {
 
   TasksProvider({
     required this.userProvider,
-    this.baseUrl = 'https://taskoro.onrender.com',
+    this.baseUrl = 'https://daskoro.site',
   });
 
   List<TaskModel> _tasks = [];
@@ -19,14 +18,12 @@ class TasksProvider extends ChangeNotifier {
   String? _error;
 
 
-  // Getters
   List<TaskModel> get tasks => _tasks;
   List<TaskCategory> get categories => _categories;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
 
-  // Отфильтрованные задачи
   List<TaskModel> get recentTasks {
     final sortedTasks = List<TaskModel>.from(_tasks);
     sortedTasks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -323,7 +320,6 @@ class TasksProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Очистка всех данных
   void clearData() {
     _tasks.clear();
     _categories.clear();

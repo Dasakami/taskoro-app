@@ -3,18 +3,19 @@ import 'package:provider/provider.dart';
 import 'package:taskoro/providers/user_provider.dart';
 import 'package:taskoro/widgets/animated_background.dart';
 import 'package:taskoro/theme/app_theme.dart';
-import 'package:taskoro/models/character_class_model.dart'; // поправь путь
+import 'package:taskoro/models/character_class_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController   = TextEditingController();
-  final _passwordController   = TextEditingController();
-  final _emailController      = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
   final _rePasswordController = TextEditingController();
 
   bool _isLogin = true;
@@ -23,10 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // загружаем классы при старте экрана
     final prov = context.read<UserProvider>();
     prov.fetchCharacterClasses().catchError((e) {
-      // можно показать ошибку, но не критично
       debugPrint('Ошибка загрузки классов: $e');
     });
   }
@@ -53,11 +52,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submitForm() async {
-    final username   = _usernameController.text.trim();
-    final password   = _passwordController.text.trim();
-    final email      = _emailController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    final email = _emailController.text.trim();
     final rePassword = _rePasswordController.text.trim();
-    final classId    = _selectedClassId;
+    final classId = _selectedClassId;
 
     if (username.isEmpty || password.isEmpty ||
         (!_isLogin && (email.isEmpty || rePassword.isEmpty || classId == null))) {
@@ -68,13 +67,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
+      final prov = context.read<UserProvider>();
       if (_isLogin) {
-        await context.read<UserProvider>().login(username, password);
+        await prov.login(username, password);
       } else {
-        await context.read<UserProvider>()
-            .register(username, email, password, classId!);
+        if (classId == null) {
+          return _showSnack('Выберите класс персонажа');
+        }
+        await prov.register(username, email, password, classId);
       }
-      Navigator.pushReplacementNamed(context, '/home');
+
+      // Проверяем, что после логина/регистрации user не null
+      if (!prov.isAuthenticated || prov.user == null) {
+        return _showSnack('Не удалось войти, попробуйте ещё раз');
+      }
+
+      // Навигация только если user существует
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } catch (e) {
       _showSnack(e.toString());
     }
@@ -101,13 +112,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo/Title...
+                    // Logo/Title
                     ShaderMask(
                       shaderCallback: (bounds) => const LinearGradient(
                         colors: AppColors.gradientPrimary,
                       ).createShader(bounds),
                       child: Text(
-                        'TASKORO',
+                        'DASKORO',
                         style: Theme.of(context)
                             .textTheme
                             .displayLarge!
@@ -122,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 40),
 
-                    // Card c формой
+                    // Card с формой
                     Card(
                       margin: EdgeInsets.zero,
                       child: Padding(
@@ -156,12 +167,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Режим регистрации: email, подтверждение, класс
                             if (!_isLogin) ...[
                               if (loading)
                                 const Center(child: CircularProgressIndicator())
                               else ...[
-                                // E-mail
                                 TextField(
                                   controller: _emailController,
                                   keyboardType: TextInputType.emailAddress,
@@ -172,7 +181,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Подтверждение пароля
                                 TextField(
                                   controller: _rePasswordController,
                                   obscureText: true,
@@ -183,7 +191,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(height: 16),
 
-                                // Дропдаун с классами из бэка
                                 DropdownButtonFormField<int>(
                                   value: _selectedClassId,
                                   items: classes.map((cls) {
@@ -199,15 +206,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   },
                                   decoration: const InputDecoration(
                                     labelText: 'Класс персонажа',
-                                    prefixIcon:
-                                    Icon(Icons.shield_outlined),
+                                    prefixIcon: Icon(Icons.shield_outlined),
                                   ),
                                 ),
                                 const SizedBox(height: 16),
                               ],
                             ],
 
-                            // Кнопка отправки
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton(
@@ -219,22 +224,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Переключение режима
                             TextButton(
                               onPressed: _toggleMode,
                               child: Text(
                                 _isLogin
                                     ? 'Нет аккаунта? Зарегистрироваться'
                                     : 'Уже есть аккаунт? Войти',
-                                style: TextStyle(
-                                    color: AppColors.accentSecondary),
+                                style:
+                                TextStyle(color: AppColors.accentSecondary),
                               ),
                             ),
                             const SizedBox(height: 8),
                             const Divider(),
                             const SizedBox(height: 8),
 
-                            // Демо режим
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton(

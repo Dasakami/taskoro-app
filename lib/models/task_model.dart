@@ -15,11 +15,9 @@ class TaskModel {
   final int? estimatedMinutes;
   final String? frequency;
 
-  // For habits
   final int streak;
   final DateTime? lastCompleted;
 
-  // For daily goals
   final DateTime? targetDate;
 
   TaskModel({

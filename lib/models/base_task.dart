@@ -18,7 +18,6 @@ class BaseTaskModel {
   });
 
   factory BaseTaskModel.fromJson(Map<String, dynamic> json) {
-    // Сначала смотрим на task_type, потом — на type, иначе — one_time
     final rawType = (json['task_type'] as String?)
         ?? (json['type'] as String?)
         ?? 'one_time';

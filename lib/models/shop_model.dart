@@ -4,7 +4,7 @@ class ShopItem {
   final String name;
   final String description;
   final String category;
-  final String currency; // 'coins' or 'gems'
+  final String currency;
   final int price;
   final String? imageUrl;
   final String? titleText;

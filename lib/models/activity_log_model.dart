@@ -14,7 +14,6 @@ class ActivityLog {
   });
 
   factory ActivityLog.fromJson(Map<String, dynamic> json) {
-    // Формируем строку награды
     String reward = '';
     final coins = json['coins_gained'] ?? 0;
     final experience = json['experience_gained'] ?? 0;

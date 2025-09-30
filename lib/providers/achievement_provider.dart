@@ -18,7 +18,7 @@ class AchievementProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  final String apiUrl = 'https://taskoro.onrender.com/api/history/achievements/';
+  final String apiUrl = 'https://daskoro.site/api/history/achievements/';
 
   Future<void> fetchAchievements(String accessToken) async {
     _isLoading = true;

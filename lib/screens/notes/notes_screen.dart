@@ -6,6 +6,7 @@ import 'package:taskoro/widgets/magic_card.dart';
 
 import 'deleted_notes_screen.dart';
 import 'note_form_screen.dart';
+import 'notes_detail_screen.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
@@ -57,65 +58,79 @@ class _NotesScreenState extends State<NotesScreen> {
               childAspectRatio: 0.8,
             ),
             itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-              return MagicCard(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        note.title,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+              itemBuilder: (context, index) {
+                final note = notes[index];
+                return GestureDetector(
+                  onTap: () {
+                    // Переход в детали заметки
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => NotesDetailScreen(noteId: note.id), // твой экран деталей
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        note.content ?? '',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                    );
+                  },
+                  child: MagicCard(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => NoteFormScreen(
-                                    noteId: note.id,
-                                    initialTitle: note.title,
-                                    initialContent: note.content,
-                                  ),
-                                ),
-                              );
-                            },
-                            color: AppColors.accentPrimary,
+                          Text(
+                            note.title,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1, // ограничиваем одну строку
+                            overflow: TextOverflow.ellipsis, // добавляем "..."
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () async {
-                              await context
-                                  .read<NotesProvider>()
-                                  .deleteNote(note.id);
-                            },
-                            color: AppColors.error,
+                          const SizedBox(height: 8),
+                          Text(
+                            note.content ?? '',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 3, // например, показываем максимум 3 строки
+                            overflow: TextOverflow.ellipsis, // добавляем "..."
+                          ),
+                          const Spacer(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => NoteFormScreen(
+                                        noteId: note.id,
+                                        initialTitle: note.title,
+                                        initialContent: note.content,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                color: AppColors.accentPrimary,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () async {
+                                  await context.read<NotesProvider>().deleteNote(note.id);
+                                },
+                                color: AppColors.error,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              }
+
           ),
         ],
       ),

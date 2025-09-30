@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:taskoro/screens/main/privacy_policy_page.dart';
 import 'package:taskoro/theme/app_theme.dart';
 import 'package:taskoro/widgets/magic_card.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
-
+  Future<void> _openWebsite() async {
+    final Uri url = Uri.parse('https://daskoro.site/');
+    if (!await launchUrl(
+      url,
+      mode: LaunchMode.externalApplication, // откроет сайт в браузере
+    )) {
+      // Если открыть не удалось
+      debugPrint('Не удалось открыть $url');
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,6 +180,12 @@ class SettingsScreen extends StatelessWidget {
                         MaterialPageRoute(builder: (_) => const LicensePage()),
                       );
                     },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.description, color: Colors.blue),
+                    title: const Text('Веб сайт'),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: _openWebsite, // <-- вызываем функцию
                   ),
                   ListTile(
                     leading: const Icon(Icons.privacy_tip, color: AppColors.accentSecondary),

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:taskoro/providers/user_provider.dart';
 
 import '../models/note_model.dart';
@@ -16,7 +15,7 @@ class NotesProvider with ChangeNotifier {
 
   Future<void> fetchNotes() async {
     final response = await userProvider.authGet(
-      Uri.parse('https://taskoro.onrender.com/api/notes/notes/'),
+      Uri.parse('https://daskoro.site/api/notes/notes/'),
     );
 
     if (response.statusCode == 200) {
@@ -26,9 +25,10 @@ class NotesProvider with ChangeNotifier {
     }
   }
 
+
   Future<void> createNote(String title, String? content) async {
     final response = await userProvider.authPost(
-      Uri.parse('https://taskoro.onrender.com/api/notes/notes/'),
+      Uri.parse('https://daskoro.site/api/notes/notes/'),
       body: json.encode({
         'title': title,
         'content': content,
@@ -42,7 +42,7 @@ class NotesProvider with ChangeNotifier {
 
   Future<void> updateNote(int id, String title, String? content) async {
     await userProvider.authPut(
-      Uri.parse('https://taskoro.onrender.com/api/notes/notes/$id/'),
+      Uri.parse('https://daskoro.site/api/notes/notes/$id/'),
       body: json.encode({
         'title': title,
         'content': content,
@@ -53,15 +53,23 @@ class NotesProvider with ChangeNotifier {
 
   Future<void> deleteNote(int id) async {
     await userProvider.authPatch(
-      Uri.parse('https://taskoro.onrender.com/api/notes/notes/$id/'),
+      Uri.parse('https://daskoro.site/api/notes/notes/$id/'),
       body: json.encode({'is_deleted': true}),
     );
     await fetchNotes();
   }
+  Note? getNoteById(int id) {
+    try {
+      return _notes.firstWhere((note) => note.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
 
   Future<void> restoreNote(int id) async {
     await userProvider.authPatch(
-      Uri.parse('https://taskoro.onrender.com/api/notes/notes/$id/'),
+      Uri.parse('https://daskoro.site/api/notes/notes/$id/'),
       body: json.encode({'is_deleted': false}),
     );
     await fetchNotes();

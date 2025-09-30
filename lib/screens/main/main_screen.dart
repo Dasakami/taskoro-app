@@ -91,7 +91,7 @@ class _MainScreenState extends State<MainScreen> {
                       Text(
                         _selectedIndex >= 0 && _selectedIndex < _titles.length
                             ? _titles[_selectedIndex]
-                            : 'Taskoro',
+                            : 'Daskoro',
                         style: Theme.of(context).textTheme.displaySmall,
                       ),
                     ],

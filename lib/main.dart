@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:taskoro/providers/achievement_provider.dart';
 import 'package:taskoro/providers/activity_log_provider.dart';
@@ -63,23 +62,16 @@ class _MyAppState extends State<MyApp> {
     super.initState();
 
     final fb = FirebaseMessaging.instance;
-
-    // 1) get and send the token
     fb.getToken().then((token) {
       print('🔑 FCM token: $token');
-      // POST it to your Django API…
     });
 
-    // 2) foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage msg) {
       print('📨 onMessage: ${msg.notification?.title}');
-      // show a local dialog/snackbar, etc.
     });
 
-    // 3) user tapped notification (app in bg/terminated)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage msg) {
       print('🚀 onMessageOpenedApp: ${msg.data}');
-      // navigate to a specific screen, etc.
     });
   }
 
@@ -139,7 +131,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ],
       child: MaterialApp(
-        title: 'Taskoro — Игровая прокачка дисциплины и привычек',
+        title: 'Daskoro — Игровая прокачка дисциплины и привычек',
         theme: AppTheme.darkTheme,
         debugShowCheckedModeBanner: false,
         routes: {

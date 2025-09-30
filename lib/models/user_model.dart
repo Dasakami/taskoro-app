@@ -17,7 +17,6 @@ class UserModel {
   final String? createdAt;
   final String? updatedAt;
 
-  // Equipped items fields
   final String? equippedBackground;
   final String? equippedAvatarFrameColor;
   final String? equippedTitle;

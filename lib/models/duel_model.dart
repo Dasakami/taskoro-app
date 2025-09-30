@@ -1,7 +1,7 @@
 class UserSummary {
   final int id;
   final String username;
-  final String avatar; // optional, может быть пустой строкой
+  final String avatar;
 
   UserSummary({
     required this.id,
@@ -22,13 +22,13 @@ class DuelModel {
   final int id;
   final UserSummary challenger;
   final UserSummary opponent;
-  final int task;          // task id
+  final int task;
   final int coinsStake;
   final String status;
   final DateTime createdAt;
-  final DateTime? startTime;  // nullable
-  final DateTime? endTime;    // nullable
-  final int? winner;          // nullable (id победителя)
+  final DateTime? startTime;
+  final DateTime? endTime;
+  final int? winner;
 
   DuelModel({
     required this.id,

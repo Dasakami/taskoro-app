@@ -1,4 +1,4 @@
-// providers/duel_provider.dart
+
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../models/duel_model.dart';
 
 class DuelProvider extends ChangeNotifier {
-  final String baseUrl = 'https://taskoro.onrender.com/api/duels';
+  final String baseUrl = 'https://daskoro.site/api/duels';
   List<DuelModel> _duels = [];
 
   List<DuelModel> get duels => List.unmodifiable(_duels);
@@ -20,7 +20,6 @@ class DuelProvider extends ChangeNotifier {
   List<DuelModel> get completedDuels =>
       _duels.where((d) => d.status == 'completed' || d.status == 'finished').toList();
 
-  // Заголовки с токеном
   Map<String, String> _authHeaders(String token) => {
     'Authorization': 'Bearer $token',
     'Content-Type': 'application/json',
@@ -71,12 +70,10 @@ class DuelProvider extends ChangeNotifier {
     required List<int> taskIds,
     required int coinsStake,
   }) async {
-    // если у вас в бекенде одно поле task → ForeignKey,
-    // берём первый из списка (или по-вашему логика)
-    final uri = Uri.parse('https://taskoro.onrender.com/api/duels/duels/');
+    final uri = Uri.parse('https://daskoro.site/api/duels/duels/');
     final body = jsonEncode({
       'opponent_id': opponentId,
-      'task': taskIds.first,      // <- вместо task_ids
+      'task': taskIds.first,
       'coins_stake': coinsStake,
     });
     final res = await http.post(uri, headers: _authHeaders(token), body: body);

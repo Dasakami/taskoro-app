@@ -1,14 +1,13 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:taskoro/providers/user_provider.dart';
 
 import '../models/shop_model.dart';
 
 class ShopProvider extends ChangeNotifier {
   final UserProvider userProvider;
-  final String _baseUrl = 'https://taskoro.onrender.com/api';
+  final String _baseUrl = 'https://daskoro.site/api';
   String? _accessToken;
 
   ShopProvider({required this.userProvider});
@@ -22,7 +21,6 @@ class ShopProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  // Getters
   List<ShopItem> get items => _items;
   List<Purchase> get purchases => _purchases;
   List<ActiveBoost> get activeBoosts => _activeBoosts;
@@ -31,7 +29,7 @@ class ShopProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // User inventory - purchased items
+
   List<Purchase> get userInventory => _purchases;
   List<Purchase> get equippedItems => _purchases.where((p) => p.isEquipped).toList();
 
@@ -80,12 +78,10 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  // Get shop item by category
   List<ShopItem> getItemsByCategory(String category) {
     return _items.where((item) => item.category == category).toList();
   }
 
-  // Purchase item
   Future<bool> purchaseItem(String itemId) async {
     _setLoading(true);
     _setError(null);
@@ -188,7 +184,6 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  // Fetch chests
   Future<void> fetchChests() async {
     try {
 
@@ -204,7 +199,6 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  // Open chest
   Future<ChestOpening?> openChest(String chestId) async {
     _setLoading(true);
     _setError(null);
@@ -232,12 +226,10 @@ class ShopProvider extends ChangeNotifier {
     }
   }
 
-  // Check if user owns item
   bool ownsItem(String itemId) {
     return _purchases.any((purchase) => purchase.item.id == itemId);
   }
 
-  // Check if item is equipped
   bool isItemEquipped(String itemId) {
     return _purchases.any((purchase) =>
     purchase.item.id == itemId && purchase.isEquipped);

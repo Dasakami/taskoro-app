@@ -10,7 +10,6 @@ class BaseTaskProvider with ChangeNotifier {
 
   BaseTaskProvider(this._userProvider);
 
-  // теперь URL берётся напрямую
   String? get _baseUrl => _userProvider.baseUrl;
 
   List<BaseTaskModel> _tasks = [];
@@ -21,7 +20,6 @@ class BaseTaskProvider with ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
 
-  /// Загрузка всех базовых заданий
   Future<void> fetchBaseTasks() async {
     final token = _userProvider.accessToken;
     if (token == null) return;
@@ -52,7 +50,6 @@ class BaseTaskProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Отметить выполнение
   Future<bool> complete(BaseTaskModel task) async {
     final token = _userProvider.accessToken;
     if (token == null) return false;
@@ -86,7 +83,6 @@ class BaseTaskProvider with ChangeNotifier {
     return false;
   }
 
-  // Геттеры по типам
   List<BaseTaskModel> get oneTimers =>
       _tasks.where((t) => t.type == BaseTaskType.oneTime).toList();
   List<BaseTaskModel> get habits =>

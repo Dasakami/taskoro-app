@@ -5,7 +5,6 @@ import 'base_task_provider.dart';
 class BaseHabitProvider with ChangeNotifier {
   final BaseTaskProvider _taskProv;
   BaseHabitProvider(this._taskProv) {
-    // синхронимся на изменения
     _taskProv.addListener(_onBaseChanged);
   }
 

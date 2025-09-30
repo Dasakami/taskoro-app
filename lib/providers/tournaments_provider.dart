@@ -11,7 +11,7 @@ class TournamentsProvider with ChangeNotifier {
 
   TournamentsProvider({
     required this.userProvider,
-    this.baseUrl = 'https://taskoro.onrender.com',
+    this.baseUrl = 'https://daskoro.site',
   });
 
   final List<Tournament> _tournaments = [];

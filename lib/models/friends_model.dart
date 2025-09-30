@@ -30,7 +30,6 @@ class Friend {
       );
     }
 
-    // fallback
     return Friend(
       id: json['id'] as int? ?? 0,
       username: json['username'] as String? ?? 'Неизвестный',

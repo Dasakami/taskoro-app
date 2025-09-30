@@ -18,7 +18,7 @@ class UserProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   String? _accessToken;
   String? _refreshToken;
-  final String _baseUrl = 'https://taskoro.onrender.com/api';
+  final String _baseUrl = 'https://daskoro.site/api';
 
   UserModel? get user => _user;
 
@@ -285,9 +285,9 @@ class UserProvider extends ChangeNotifier {
     String? avatarFilePath,
     String? avatarUrl,
   }) async {
-    if (_accessToken == null) throw Exception('User not authenticated');
+    if (_accessToken == null) throw Exception('Пользователь не авторизован');
 
-    final url = Uri.parse('https://taskoro.onrender.com/api/users/me/edit/');
+    final url = Uri.parse('https://daskoro.site/api/users/me/edit/');
 
     http.Response response;
 

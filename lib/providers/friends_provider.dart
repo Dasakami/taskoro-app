@@ -1,8 +1,6 @@
-// providers/friends_provider.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../models/friends_model.dart';
 import 'user_provider.dart';
 
@@ -12,10 +10,9 @@ class FriendsProvider with ChangeNotifier {
 
   FriendsProvider({
     required this.userProvider,
-    this.baseUrl = 'https://taskoro.onrender.com',
+    this.baseUrl = 'https://daskoro.site',
   });
 
-  // --- State: друзья ---
   List<Friend> _friends = [];
   bool _isLoading = false;
   String? _error;
@@ -24,7 +21,6 @@ class FriendsProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // --- State: запросы ---
   bool _isLoadingRequests = false;
   List<FriendRequest> _receivedRequests = [];
   List<FriendRequest> _sentRequests = [];
@@ -205,10 +201,6 @@ class FriendsProvider with ChangeNotifier {
     return false;
   }
 
-
-  // providers/friends_provider.dart
-
-  /// Отмена исходящего запроса (decline для sent_requests)
   Future<bool> cancelFriendRequest(int requestId) async {
     if (userProvider.accessToken == null) return false;
 
@@ -219,7 +211,6 @@ class FriendsProvider with ChangeNotifier {
           '${response.statusCode}: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        // Удаляем из локального списка sentRequests и обновляем UI
         _sentRequests.removeWhere((r) => r.id == requestId);
         notifyListeners();
         return true;
@@ -243,10 +234,6 @@ class FriendsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // providers/friends_provider.dart
-// … остальной код остаётся без изменений …
-
-  // Поиск пользователей (по нику или id)
   Future<List<Friend>> searchUsers(String query) async {
     if (query.isEmpty || userProvider.accessToken == null) return [];
 
