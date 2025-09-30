@@ -47,3 +47,4 @@ android/.kotlin/
 android/gradlew
 assets/
 /ios
+android/build/reports/problems/problems-report.html
