@@ -31,7 +31,7 @@ class BaseDailyProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final data = await _api.get('/daily-tasks/');
+      final data = await _api.get('/tasks/tasks/?task_type=daily');
       
       if (data is List) {
         _dailyTasks = data.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -48,7 +48,7 @@ class BaseDailyProvider extends ChangeNotifier {
   
   Future<bool> completeDailyTask(int taskId) async {
     try {
-      await _api.post('/daily-tasks/$taskId/complete/');
+      await _api.post('/tasks/tasks/$taskId/complete/');
       await fetchDailyTasks();
       return true;
     } catch (e) {

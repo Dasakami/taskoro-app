@@ -21,7 +21,7 @@ class BaseHabitProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final data = await _api.get('/habits/');
+      final data = await _api.get('/tasks/tasks/?task_type=habit');
       
       if (data is List) {
         _habits = data.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -38,7 +38,7 @@ class BaseHabitProvider extends ChangeNotifier {
   
   Future<bool> logHabit(int habitId) async {
     try {
-      await _api.post('/habits/$habitId/log/');
+      await _api.post('/tasks/tasks/$habitId/complete/');
       await fetchHabits();
       return true;
     } catch (e) {

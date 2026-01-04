@@ -4,6 +4,7 @@ import '../../models/base_task.dart';
 import '../../providers/base_task_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
+import '../../widgets/state_wrapper.dart';
 import 'base_task_detail_screen.dart';
 
 class BaseTaskScreen extends StatelessWidget {
@@ -133,14 +134,11 @@ class BaseTaskScreen extends StatelessWidget {
                               ? null
                               : () async {
                             final ok = await prov.complete(task);
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(
-                              SnackBar(
-                                content: Text(ok
-                                    ? 'Получено ${task.xpReward} XP'
-                                    : 'Задача сегодня выполнено'),
-                              ),
-                            );
+                            if (ok) {
+                              AppSnackBar.showSuccess(context, 'Получено ${task.xpReward} XP');
+                            } else {
+                              AppSnackBar.showError(context, 'Задача сегодня выполнена');
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(

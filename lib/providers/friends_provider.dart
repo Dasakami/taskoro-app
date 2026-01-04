@@ -42,7 +42,7 @@ class FriendsProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final data = await _api.get('/friends/requests/');
+      final data = await _api.get('/friends/');
       
       if (data is List) {
         _friends = data

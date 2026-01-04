@@ -5,6 +5,7 @@ import '../../models/shop_model.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/state_wrapper.dart';
 
 class ChestScreen extends StatefulWidget {
   const ChestScreen({Key? key}) : super(key: key);
@@ -444,21 +445,16 @@ class _ChestScreenState extends State<ChestScreen> {
     final opening = await shopProvider.openChest(chest.id);
 
     if (opening != null) {
-      // Update user currency locally
+      // Update user currency locally (apply rewards returned from server)
       userProvider.updateCurrency(
-        coins: opening.coinsReward - chest.priceCoins,
-        gems: opening.gemsReward - chest.priceGems,
+        coins: opening.coinsReward,
+        gems: opening.gemsReward,
       );
 
       Navigator.pop(context); // Close bottom sheet
       _showRewardDialog(context, opening);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(shopProvider.error ?? 'Ошибка открытия сундука'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка открытия сундука');
     }
   }
 
@@ -469,14 +465,11 @@ class _ChestScreenState extends State<ChestScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
+        title: Row(
+          children: const [
             Icon(Icons.celebration, color: AppColors.accentTertiary),
             SizedBox(width: 8),
-            Text(
-              'Поздравляем!',
-              style: TextStyle(color: AppColors.textPrimary),
-            ),
+            Text('Поздравляем!', style: TextStyle(color: AppColors.textPrimary)),
           ],
         ),
         content: Column(

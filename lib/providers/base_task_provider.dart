@@ -43,7 +43,7 @@ class BaseTaskProvider extends ChangeNotifier {
   
   Future<bool> completeBaseTask(int taskId) async {
     try {
-      await _api.post('/base-tasks/$taskId/complete/');
+      await _api.post('/tasks/base-tasks/$taskId/complete/');
       await fetchBaseTasks();
       return true;
     } catch (e) {

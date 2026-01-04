@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:taskoro/providers/user_provider.dart';
 import 'package:taskoro/widgets/animated_background.dart';
 import 'package:taskoro/theme/app_theme.dart';
+import '../../widgets/state_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -45,9 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    AppSnackBar.showError(context, msg);
   }
 
   Future<void> _submitForm() async {

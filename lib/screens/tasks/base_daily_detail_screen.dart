@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/base_task.dart';
 import '../../providers/base_daily_provider.dart';
 import '../../widgets/magic_card.dart';
+import '../../widgets/state_wrapper.dart';
 import '../../theme/app_theme.dart';
 
 class BaseDailyDetailScreen extends StatelessWidget {
@@ -39,11 +40,11 @@ class BaseDailyDetailScreen extends StatelessWidget {
                       ? null
                       : () async {
                     final ok = await prov.complete(task);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(ok
-                                ? 'Получено ${task.xpReward} XP'
-                                : 'Ошибка')));
+                    if (ok) {
+                      AppSnackBar.showSuccess(context, 'Получено ${task.xpReward} XP');
+                    } else {
+                      AppSnackBar.showError(context, 'Ошибка');
+                    }
                     if (ok) Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(

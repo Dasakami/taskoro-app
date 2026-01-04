@@ -5,6 +5,7 @@ import '../../models/shop_model.dart';
 import '../../providers/shop_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/state_wrapper.dart';
 
 class ShopItemDetailScreen extends StatelessWidget {
   final ShopItem item;
@@ -411,19 +412,9 @@ class ShopItemDetailScreen extends StatelessWidget {
         gems: item.currency == 'gems' ? -item.price : 0,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${item.name} успешно куплен!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppSnackBar.showSuccess(context, '${item.name} успешно куплен!');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(shopProvider.error ?? 'Ошибка покупки'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка покупки');
     }
   }
 
@@ -438,19 +429,9 @@ class ShopItemDetailScreen extends StatelessWidget {
     }
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isEquipped ? 'Предмет снят' : 'Предмет экипирован'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppSnackBar.showSuccess(context, isEquipped ? 'Предмет снят' : 'Предмет экипирован');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(shopProvider.error ?? 'Ошибка'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка');
     }
   }
 
@@ -460,19 +441,9 @@ class ShopItemDetailScreen extends StatelessWidget {
     final success = await shopProvider.equipItem(purchase.id);
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Буст активирован!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppSnackBar.showSuccess(context, 'Буст активирован!');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(shopProvider.error ?? 'Ошибка активации'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка активации');
     }
   }
 }

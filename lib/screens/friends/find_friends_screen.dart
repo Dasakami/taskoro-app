@@ -4,6 +4,7 @@ import '../../models/friends_model.dart';
 import '../../providers/friends_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
+import '../../widgets/state_wrapper.dart';
 
 class FindFriendsScreen extends StatefulWidget {
   const FindFriendsScreen({super.key});
@@ -49,16 +50,11 @@ class _FindFriendsScreenState extends State<FindFriendsScreen> {
     final success = await friendsProvider.sendFriendRequest(user.id);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? 'Заявка в друзья отправлена!'
-                : 'Ошибка отправки заявки',
-          ),
-          backgroundColor: success ? Colors.green : Colors.red,
-        ),
-      );
+      if (success) {
+        AppSnackBar.showSuccess(context, 'Заявка в друзья отправлена!');
+      } else {
+        AppSnackBar.showError(context, 'Ошибка отправки заявки');
+      }
     }
   }
 

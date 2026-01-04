@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/friends_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
+import '../../widgets/state_wrapper.dart';
 import '../duels/task_stake_screen.dart';
 import 'find_friends_screen.dart';
 import 'friend_profile_screen.dart';
@@ -269,11 +270,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.message),
                                           onPressed: () {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('Функция сообщений пока недоступна'),
-                                              ),
-                                            );
+                                            AppSnackBar.showError(context, 'Функция сообщений пока недоступна');
                                           },
                                           color: AppColors.accentPrimary,
                                           iconSize: 20,
