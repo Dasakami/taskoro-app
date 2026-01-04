@@ -60,12 +60,12 @@ class DuelDetailScreen extends StatelessWidget {
           if (d.status == 'pending')
             Row(children: [
               ElevatedButton(
-                onPressed: () => prov.acceptDuel(token!, d.id),
+                onPressed: () => prov.acceptDuel(d.id),
                 child: const Text('Принять'),
               ),
               const SizedBox(width: 12),
               OutlinedButton(
-                onPressed: () => prov.declineDuel(token!, d.id),
+                onPressed: () => prov.declineDuel(d.id),
                 child: const Text('Отклонить'),
               ),
             ]),

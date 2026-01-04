@@ -40,4 +40,7 @@ class Tournament {
       minTasksCompleted: json['min_tasks_completed'] as int,
     );
   }
+  
+  /// Является ли турнир завершённым
+  bool get isCompleted => DateTime.now().isAfter(endDate);
 }

@@ -38,7 +38,6 @@ class _CreateDuelScreenState extends State<CreateDuelScreen> {
           .map((e) => int.parse(e.trim()))
           .toList();
       await provider.createDuel(
-        token: token!,
         opponentId: _opponentId!,
         taskIds: taskIds,
         coinsStake: _coinsStake!,

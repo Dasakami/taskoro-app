@@ -42,4 +42,7 @@ class BaseTaskModel {
       completed: json['completed'] as bool? ?? false,
     );
   }
+  
+  /// Alias для совместимости
+  bool get isCompleted => completed;
 }

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:taskoro/providers/user_provider.dart';
 import 'package:taskoro/widgets/animated_background.dart';
 import 'package:taskoro/theme/app_theme.dart';
-import 'package:taskoro/models/character_class_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -89,10 +88,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       _showSnack(e.toString());
     }
-  }
-
-  void _loginDemo() {
-    context.read<UserProvider>().initDemoUser();
   }
 
   @override
@@ -238,20 +233,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             const Divider(),
                             const SizedBox(height: 8),
 
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton(
-                                onPressed: _loginDemo,
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                      color: AppColors.accentTertiary),
-                                ),
-                                child: const Text(
-                                  'Демо режим',
-                                  style: TextStyle(
-                                      color: AppColors.accentTertiary),
-                                ),
-                              ),
+                            SizedBox(height: AppSizes.md),
+                            Text(
+                              'Введите данные для входа',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ],
                         ),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:taskoro/providers/tasks_provider.dart';
 import 'package:taskoro/screens/main/dashboard_screen.dart';
 import 'package:taskoro/screens/tasks/tasks_screen.dart';
 import 'package:taskoro/screens/tournaments_screen.dart';
 import 'package:taskoro/screens/duels/duels_screen.dart';
-import 'package:taskoro/screens/profile_screen.dart';
 import 'package:taskoro/widgets/app_drawer.dart';
 import 'package:taskoro/widgets/animated_background.dart';
 
@@ -33,9 +31,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TasksProvider>().initDemoData();
-    });
     didChangeDependencies();
   }
 

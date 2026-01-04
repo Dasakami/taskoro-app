@@ -1,90 +1,159 @@
-
-
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../models/duel_model.dart';
+import '../services/api_service.dart';
 
+/// Провайдер для управления дуэлями
 class DuelProvider extends ChangeNotifier {
-  final String baseUrl = 'https://daskoro.site/api/duels';
+  final ApiService _api = ApiService();
+  
+  // Данные
   List<DuelModel> _duels = [];
-
-  List<DuelModel> get duels => List.unmodifiable(_duels);
-
+  
+  // Состояние
+  bool _isLoading = false;
+  String? _error;
+  
+  // ===================== GETTERS =====================
+  
+  List<DuelModel> get duels => _duels;
+  
   List<DuelModel> get pendingDuels =>
       _duels.where((d) => d.status == 'pending').toList();
   List<DuelModel> get activeDuels =>
       _duels.where((d) => d.status == 'active').toList();
-  List<DuelModel> get declinedDuels =>
-      _duels.where((d) => d.status == 'declined').toList();
   List<DuelModel> get completedDuels =>
       _duels.where((d) => d.status == 'completed' || d.status == 'finished').toList();
-
-  Map<String, String> _authHeaders(String token) => {
-    'Authorization': 'Bearer $token',
-    'Content-Type': 'application/json',
-  };
-
-  Future<void> fetchDuels(String token, {String? status}) async {
-    final uri = status != null
-        ? Uri.parse('$baseUrl/duels/?status=$status')
-        : Uri.parse('$baseUrl/duels/');
-    final res = await http.get(uri, headers: _authHeaders(token));
-
-    if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
-      _duels = data.map((j) => DuelModel.fromJson(j)).toList();
-      notifyListeners();
-    } else {
-      throw Exception('Ошибка загрузки дуэлей: ${res.body}');
+  List<DuelModel> get declinedDuels =>
+      _duels.where((d) => d.status == 'declined').toList();
+  
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  
+  // ===================== ЗАГРУЗКА ДАННЫХ =====================
+  
+  Future<void> fetchDuels({String? status}) async {
+    if (!_api.isAuthenticated) return;
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      String path = '/duels/';
+      if (status != null) {
+        path += '?status=$status';
+      }
+      
+      final data = await _api.get(path);
+      
+      if (data is List) {
+        _duels = data
+            .map((e) => DuelModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else if (data is Map) {
+        final list = data['duels'] as List? ?? [];
+        _duels = list
+            .map((e) => DuelModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      _setError('Ошибка загрузки дуэлей: $e');
+    } finally {
+      _setLoading(false);
     }
   }
-
-  Future<void> acceptDuel(String token, int id) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/duels/$id/accept/'),
-      headers: _authHeaders(token),
-    );
-    if (res.statusCode == 200) {
-      await fetchDuels(token);
-    } else {
-      throw Exception('Ошибка accept');
-    }
-  }
-
-  Future<void> declineDuel(String token, int id) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/duels/$id/decline/'),
-      headers: _authHeaders(token),
-    );
-    if (res.statusCode == 200) {
-      await fetchDuels(token);
-    } else {
-      throw Exception('Ошибка decline');
-    }
-  }
-
-  Future<void> createDuel({
-    required String token,
+  
+  // ===================== УПРАВЛЕНИЕ ДУЭЛЯМИ =====================
+  
+  Future<DuelModel?> createDuel({
     required int opponentId,
     required List<int> taskIds,
     required int coinsStake,
   }) async {
-    final uri = Uri.parse('https://daskoro.site/api/duels/duels/');
-    final body = jsonEncode({
-      'opponent_id': opponentId,
-      'task': taskIds.first,
-      'coins_stake': coinsStake,
-    });
-    final res = await http.post(uri, headers: _authHeaders(token), body: body);
-
-    if (res.statusCode == 201) {
-      final duel = DuelModel.fromJson(jsonDecode(res.body));
-      _duels.insert(0, duel);
-      notifyListeners();
-    } else {
-      throw Exception('Не удалось создать дуэль: ${res.statusCode} ${res.body}');
+    if (!_api.isAuthenticated) return null;
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      final data = await _api.post('/duels/', body: {
+        'opponent_id': opponentId,
+        'task_ids': taskIds,
+        'coins_stake': coinsStake,
+      });
+      
+      if (data is Map<String, dynamic>) {
+        final duel = DuelModel.fromJson(data);
+        _duels.add(duel);
+        notifyListeners();
+        return duel;
+      } else {
+        throw ApiException('Ошибка создания дуэли');
+      }
+    } catch (e) {
+      _setError('Ошибка создания дуэли: $e');
+      return null;
+    } finally {
+      _setLoading(false);
     }
   }
-
+  
+  Future<bool> acceptDuel(int duelId) async {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/duels/$duelId/accept/');
+      await fetchDuels();
+      return true;
+    } catch (e) {
+      _setError('Ошибка принятия дуэли: $e');
+      return false;
+    }
+  }
+  
+  Future<bool> declineDuel(int duelId) async {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/duels/$duelId/decline/');
+      await fetchDuels();
+      return true;
+    } catch (e) {
+      _setError('Ошибка отклонения дуэли: $e');
+      return false;
+    }
+  }
+  
+  Future<bool> completeDuel(int duelId, {bool victory = true}) async {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/duels/$duelId/complete/', body: {'victory': victory});
+      await fetchDuels();
+      return true;
+    } catch (e) {
+      _setError('Ошибка завершения дуэли: $e');
+      return false;
+    }
+  }
+  
+  // ===================== УТИЛИТЫ =====================
+  
+  void clearData() {
+    _duels.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+  
+  // ===================== ПРИВАТНЫЕ МЕТОДЫ =====================
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+  
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
+  }
 }

@@ -41,12 +41,10 @@ class _TaskStakeScreenState extends State<TaskStakeScreen> {
       return;
     }
 
-    final token = context.read<UserProvider>().accessToken;
     setState(() => _isLoading = true);
 
     try {
       await context.read<DuelProvider>().createDuel(
-        token: token!,
         opponentId: opponentId,
         taskIds: [_selectedTaskId!],
         coinsStake: stake,

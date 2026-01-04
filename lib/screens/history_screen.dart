@@ -18,17 +18,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    final token = Provider.of<UserProvider>(context, listen: false).accessToken;
-    if (token != null) {
-      Provider.of<ActivityLogProvider>(context, listen: false).fetchLogs(token);
-    }
+    Provider.of<ActivityLogProvider>(context, listen: false).fetchLogs();
   }
 
   void _onFilterSelect(String type) {
-    final token = Provider.of<UserProvider>(context, listen: false).accessToken;
-    if (token != null) {
-      Provider.of<ActivityLogProvider>(context, listen: false).fetchLogs(token, type: type);
-    }
+    final provider = Provider.of<ActivityLogProvider>(context, listen: false);
+    provider.fetchLogs();
   }
 
   @override

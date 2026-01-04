@@ -15,7 +15,7 @@ class LeaderboardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Лидерборд')),
-      body: FutureBuilder<List<Participant>>(
+      body: FutureBuilder<dynamic>(
         future: tourProv.fetchLeaderboard(tournamentId),
         builder: (ctx, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
@@ -26,16 +26,21 @@ class LeaderboardScreen extends StatelessWidget {
               child: Text('Ошибка: ${snap.error}', style: AppTheme.darkTheme.textTheme.bodyLarge),
             );
           }
-          final list = snap.data!;
-          if (list.isEmpty) {
+          final data = snap.data;
+          if (data == null || (data is List && data.isEmpty)) {
             return Center(child: Text('Нет участников', style: AppTheme.darkTheme.textTheme.bodyLarge));
           }
+          
+          List<dynamic> list = data is List ? data : [];
+          if (list.isEmpty) return Center(child: Text('Нет участников', style: AppTheme.darkTheme.textTheme.bodyLarge));
+          
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             separatorBuilder: (_, __) => const Divider(color: AppColors.border),
             itemCount: list.length,
             itemBuilder: (ctx, i) {
-              final p = list[i];
+              final item = list[i];
+              final p = item is Map ? Participant.fromJson(item as Map<String, dynamic>) : item as Participant;
               return ListTile(
                 tileColor: AppColors.backgroundSecondary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

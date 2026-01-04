@@ -1,100 +1,82 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import '../models/participant.dart';
 import '../models/tournaments_model.dart';
-import 'user_provider.dart';
+import '../services/api_service.dart';
 
-class TournamentsProvider with ChangeNotifier {
-  final UserProvider userProvider;
-  final String baseUrl;
-
-  TournamentsProvider({
-    required this.userProvider,
-    this.baseUrl = 'https://daskoro.site',
-  });
-
-  final List<Tournament> _tournaments = [];
-  List<Tournament> get tournaments => List.unmodifiable(_tournaments);
-
-  // Вспомогательный метод, чтобы не дублировать заголовки
-  Map<String, String> _authHeaders() {
-    final token = userProvider.accessToken;
-    if (token!.isEmpty) {
-      throw Exception('Токен не найден, выполните вход');
-    }
-    return {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
-  }
-
+class TournamentsProvider extends ChangeNotifier {
+  final ApiService _api = ApiService();
+  
+  List<Tournament> _tournaments = [];
+  bool _isLoading = false;
+  String? _error;
+  
+  List<Tournament> get tournaments => _tournaments;
+  List<Tournament> get activeTournaments => _tournaments.where((t) => !t.isCompleted).toList();
+  List<Tournament> get completedTournaments => _tournaments.where((t) => t.isCompleted).toList();
+  List<Tournament> get upcomingTournaments => _tournaments.where((t) => DateTime.now().isBefore(t.startDate)).toList();
+  List<Tournament> get pastTournaments => _tournaments.where((t) => DateTime.now().isAfter(t.endDate)).toList();
+  
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  
   Future<void> fetchTournaments() async {
-    final url = Uri.parse('$baseUrl/api/tournaments/');
-    final resp = await userProvider.authGet(url);
-
-    if (resp.statusCode == 200) {
-      final List data = jsonDecode(resp.body);
-      _tournaments
-        ..clear()
-        ..addAll(data.map((j) => Tournament.fromJson(j)));
-      notifyListeners();
-    } else {
-      throw Exception('Ошибка загрузки турниров [${resp.statusCode}]');
+    if (!_api.isAuthenticated) return;
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      final data = await _api.get('/tournaments/');
+      
+      if (data is List) {
+        _tournaments = data.map((e) => Tournament.fromJson(e as Map<String, dynamic>)).toList();
+      } else if (data is Map) {
+        final list = data['tournaments'] as List? ?? [];
+        _tournaments = list.map((e) => Tournament.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      _setError('Ошибка загрузки турниров: $e');
+    } finally {
+      _setLoading(false);
     }
   }
-
-  List<Tournament> get activeTournaments =>
-      _tournaments.where((t) => t.isActive).toList();
-
-  /// Предстоящие (неактивные + дата старта > now)
-  List<Tournament> get upcomingTournaments =>
-      _tournaments.where((t) =>
-      !t.isActive && t.startDate.isAfter(DateTime.now())
-      ).toList();
-
-  /// Прошедшие (неактивные + дата старта < now)
-  List<Tournament> get pastTournaments =>
-      _tournaments.where((t) =>
-      !t.isActive && t.startDate.isBefore(DateTime.now())
-      ).toList();
-
-  Future<void> joinTournament(int id) async {
-    final url = Uri.parse('$baseUrl/api/tournaments/$id/join/');
-
-    final resp = await userProvider.authPost(url, headers: _authHeaders() );
-
-
-    if (resp.statusCode == 200 || resp.statusCode == 201) {
-      // Можно обновить локальный стейт, если нужно
-      return;
+  
+  Future<bool> joinTournament(int tournamentId) async {
+    try {
+      await _api.post('/tournaments/$tournamentId/join/');
+      await fetchTournaments();
+      return true;
+    } catch (e) {
+      _setError('Ошибка вступления в турнир: $e');
+      return false;
     }
-
-    if (resp.statusCode == 401 || resp.statusCode == 403) {
-      throw Exception('Неавторизован: проверьте токен или права доступа');
-    }
-
-    // Пытаемся распарсить ошибку из тела
-    final body = jsonDecode(resp.body) as Map<String, dynamic>;
-    final error = body['error'] ??
-        body['detail'] ??
-        'Ошибка участия в турнире [${resp.statusCode}]';
-    throw Exception(error);
   }
-
-  Future<List<Participant>> fetchLeaderboard(int tournamentId) async {
-    final url = Uri.parse('$baseUrl/api/tournaments/$tournamentId/leaderboard/');
-    final resp = await userProvider.authGet(url);
-
-    if (resp.statusCode == 200) {
-      final List data = jsonDecode(resp.body);
-      return data.map((j) => Participant.fromJson(j)).toList();
+  
+  Future<dynamic> fetchLeaderboard([int? tournamentId]) async {
+    try {
+      final path = tournamentId != null 
+          ? '/tournaments/$tournamentId/leaderboard/' 
+          : '/leaderboard/';
+      return await _api.get(path);
+    } catch (e) {
+      _setError('Ошибка загрузки рейтинга: $e');
+      return null;
     }
-
-    if (resp.statusCode == 401 || resp.statusCode == 403) {
-      throw Exception('Неавторизован: проверьте токен или доступ к этому турниру');
-    }
-
-    throw Exception('Ошибка загрузки лидерборда [${resp.statusCode}]');
+  }
+  
+  void clearData() {
+    _tournaments.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+  
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
   }
 }
