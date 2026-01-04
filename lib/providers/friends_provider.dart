@@ -1,162 +1,136 @@
-
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/friends_model.dart';
-import 'user_provider.dart';
+import '../services/api_service.dart';
 
-class FriendsProvider with ChangeNotifier {
-  final UserProvider userProvider;
-  final String baseUrl;
-
-  FriendsProvider({
-    required this.userProvider,
-    this.baseUrl = 'https://daskoro.site',
-  });
-
+/// Провайдер для управления друзьями и запросами в друзья
+class FriendsProvider extends ChangeNotifier {
+  final ApiService _api = ApiService();
+  
+  // Данные друзей
   List<Friend> _friends = [];
-  bool _isLoading = false;
-  String? _error;
-
-  List<Friend> get friends => _friends;
-  bool get isLoading => _isLoading;
-  String? get error => _error;
-
-  bool _isLoadingRequests = false;
   List<FriendRequest> _receivedRequests = [];
   List<FriendRequest> _sentRequests = [];
-
-  bool get isLoadingRequests => _isLoadingRequests;
+  
+  // Состояние
+  bool _isLoading = false;
+  bool _isLoadingRequests = false;
+  String? _error;
+  
+  // ===================== GETTERS =====================
+  
+  List<Friend> get friends => _friends;
   List<FriendRequest> get receivedRequests => _receivedRequests;
   List<FriendRequest> get sentRequests => _sentRequests;
-
-  Map<String, String> get _headers {
-    final h = {'Content-Type': 'application/json'};
-    if (userProvider.accessToken != null) {
-      h['Authorization'] = 'Bearer ${userProvider.accessToken}';
-    }
-    return h;
-  }
-
-  void _setLoading(bool v) {
-    _isLoading = v;
-    notifyListeners();
-  }
-
-  void _setError(String? msg) {
-    _error = msg;
-    notifyListeners();
-  }
-
-  // --- CRUD друзей ---
+  
+  bool get isLoading => _isLoading;
+  bool get isLoadingRequests => _isLoadingRequests;
+  String? get error => _error;
+  
+  int get pendingRequestsCount => _receivedRequests.length;
+  int get friendsCount => _friends.length;
+  
+  // ===================== УПРАВЛЕНИЕ ДРУЗЬЯМИ =====================
+  
+  /// Получить список друзей
   Future<void> fetchFriends() async {
-    if (userProvider.accessToken == null) {
+    if (!_api.isAuthenticated) {
       _setError('Не авторизован');
       return;
     }
+    
     _setLoading(true);
     _setError(null);
-
+    
     try {
-      final url = Uri.parse('$baseUrl/api/friends/');
-      final resp = await userProvider.authGet(url);
-
-      debugPrint('fetchFriends => ${resp.statusCode}: ${resp.body}');
-      if (resp.statusCode == 200) {
-        final data = json.decode(resp.body) as List<dynamic>;
-        _friends = data.map((e) => Friend.fromJson(e as Map<String, dynamic>)).toList();
-      } else {
-        _setError('Ошибка ${resp.statusCode}');
+      final data = await _api.get('/friends/');
+      
+      if (data is List) {
+        _friends = data
+            .map((e) => Friend.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else if (data is Map) {
+        final list = data['friends'] as List? ?? [];
+        _friends = list
+            .map((e) => Friend.fromJson(e as Map<String, dynamic>))
+            .toList();
       }
+      
+      _error = null;
     } catch (e) {
-      _setError('Сетевая ошибка: $e');
+      _setError('Ошибка загрузки друзей: $e');
     } finally {
       _setLoading(false);
     }
   }
-
+  
+  /// Получить профиль пользователя по ID
   Future<Friend> fetchUserProfile(int userId) async {
-    final url = Uri.parse('$baseUrl/api/users/$userId/');
-    final resp = await userProvider.authGet(url);
-    debugPrint('fetchUserProfile($userId) => ${resp.statusCode}: ${resp.body}');
-    if (resp.statusCode == 200) {
-      return Friend.fromJson(json.decode(resp.body) as Map<String, dynamic>);
+    try {
+      final data = await _api.get('/users/users/$userId/');
+      return Friend.fromJson(data as Map<String, dynamic>);
+    } catch (e) {
+      throw ApiException('Профиль не найден: $e');
     }
-    throw Exception('Профиль не найден');
   }
-
+  
+  /// Удалить друга
   Future<bool> removeFriend(int userId) async {
-    final url = Uri.parse('$baseUrl/api/friends/friend/remove/$userId/');
-    final resp = await userProvider.authDelete(url);
-
-    debugPrint('removeFriend($userId) => ${resp.statusCode}');
-    if (resp.statusCode == 200 || resp.statusCode == 204) {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.delete('/friends/remove/$userId/');
       _friends.removeWhere((f) => f.id == userId);
       notifyListeners();
       return true;
+    } catch (e) {
+      _setError('Ошибка удаления друга: $e');
+      return false;
     }
-    return false;
   }
-
-  // --- Запросы в друзья ---
+  
+  // ===================== ЗАПРОСЫ В ДРУЗЬЯ =====================
+  
+  /// Получить запросы в друзья (отправленные и полученные)
   Future<void> fetchFriendRequests() async {
-    if (userProvider.accessToken == null) {
+    if (!_api.isAuthenticated) {
       _receivedRequests = [];
       _sentRequests = [];
       notifyListeners();
       return;
     }
+    
     _isLoadingRequests = true;
     notifyListeners();
-
+    
     try {
-      final url = Uri.parse('$baseUrl/api/friends/requests/');
-      final resp = await userProvider.authGet(url);
-      debugPrint('fetchFriendRequests => ${resp.statusCode}: ${resp.body}');
-      if (resp.statusCode == 200) {
-        final map = json.decode(resp.body) as Map<String, dynamic>;
-        final recList = (map['received_requests'] as List).cast<Map<String, dynamic>>();
-        final sentList = (map['sent_requests']     as List).cast<Map<String, dynamic>>();
-
-        _receivedRequests = recList
-            .map((e) => FriendRequest.fromJson(e, isReceived: true))
+      final data = await _api.get('/friends/requests/');
+      
+      if (data is Map<String, dynamic>) {
+        // Полученные запросы
+        final received = data['received_requests'] as List? ?? [];
+        _receivedRequests = received
+            .map((e) => FriendRequest.fromJson(
+              e as Map<String, dynamic>,
+              isReceived: true,
+            ))
             .toList();
-        _sentRequests = sentList
-            .map((e) => FriendRequest.fromJson(e, isReceived: false))
+        
+        // Отправленные запросы
+        final sent = data['sent_requests'] as List? ?? [];
+        _sentRequests = sent
+            .map((e) => FriendRequest.fromJson(
+              e as Map<String, dynamic>,
+              isReceived: false,
+            ))
             .toList();
-
-        // дозагружаем отсутствующие userName/level
-        for (var i = 0; i < _receivedRequests.length; i++) {
-          final fr = _receivedRequests[i];
-          if (fr.userId != 0 && fr.username == 'Unknown') {
-            try {
-              final prof = await fetchUserProfile(fr.userId);
-              _receivedRequests[i] = fr.copyWith(
-                username: prof.username,
-                avatarUrl: prof.avatarUrl,
-                level: prof.level,
-              );
-            } catch (_) {}
-          }
-        }
-        for (var i = 0; i < _sentRequests.length; i++) {
-          final fr = _sentRequests[i];
-          if (fr.userId != 0 && fr.username == 'Unknown') {
-            try {
-              final prof = await fetchUserProfile(fr.userId);
-              _sentRequests[i] = fr.copyWith(
-                username: prof.username,
-                avatarUrl: prof.avatarUrl,
-                level: prof.level,
-              );
-            } catch (_) {}
-          }
-        }
-      } else {
-        _receivedRequests = [];
-        _sentRequests = [];
+        
+        // Загрузить информацию о пользователях если нужно
+        await _enrichFriendRequests();
       }
+      
+      _error = null;
     } catch (e) {
-      debugPrint('Error fetchFriendRequests: $e');
+      _setError('Ошибка загрузки запросов: $e');
       _receivedRequests = [];
       _sentRequests = [];
     } finally {
@@ -164,66 +138,135 @@ class FriendsProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-
-  Future<bool> sendFriendRequest(int userId) async {
-    final url = Uri.parse('$baseUrl/api/friends/request/send/$userId/');
-    final resp = await userProvider.authPost(url);
-
-    debugPrint('sendFriendRequest($userId) => ${resp.statusCode}: ${resp.body}');
-    final ok = resp.statusCode == 200 || resp.statusCode == 201;
-    if (ok) await fetchFriendRequests();
-    return ok;
-  }
-
-  Future<void> acceptFriendRequest(int requestId) async {
-    final url = Uri.parse('$baseUrl/api/friends/request/accept/$requestId/');
-    final resp = await userProvider.authPost(url);
-    debugPrint('acceptFriendRequest($requestId) => ${resp.statusCode}: ${resp.body}');
-    if (resp.statusCode == 200 || resp.statusCode == 204) {
-      await fetchFriendRequests();
-      await fetchFriends();
+  
+  /// Внутренний метод для загрузки информации о пользователях в запросах
+  Future<void> _enrichFriendRequests() async {
+    try {
+      // Загружаем информацию о пользователях для полученных запросов
+      for (var i = 0; i < _receivedRequests.length; i++) {
+        final req = _receivedRequests[i];
+        if (req.username == 'Unknown' && req.userId != 0) {
+          try {
+            final user = await fetchUserProfile(req.userId);
+            _receivedRequests[i] = req.copyWith(
+              username: user.username,
+              level: user.level,
+            );
+          } catch (_) {
+            // Игнорируем ошибки загрузки отдельных профилей
+          }
+        }
+      }
+      
+      // Загружаем информацию о пользователях для отправленных запросов
+      for (var i = 0; i < _sentRequests.length; i++) {
+        final req = _sentRequests[i];
+        if (req.username == 'Unknown' && req.userId != 0) {
+          try {
+            final user = await fetchUserProfile(req.userId);
+            _sentRequests[i] = req.copyWith(
+              username: user.username,
+              level: user.level,
+            );
+          } catch (_) {
+            // Игнорируем ошибки загрузки отдельных профилей
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Ошибка загрузки информации о пользователях: $e');
     }
   }
-
-  /// Возвращает true, если заявка успешно отклонена
+  
+  /// Отправить запрос в друзья
+  Future<bool> sendFriendRequest(int userId) async {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/friends/request/send/', body: {'user_id': userId});
+      await fetchFriendRequests();
+      return true;
+    } catch (e) {
+      _setError('Ошибка отправки запроса: $e');
+      return false;
+    }
+  }
+  
+  /// Принять запрос в друзья
+  Future<bool> acceptFriendRequest(int requestId) async {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/friends/request/$requestId/accept/');
+      await fetchFriendRequests();
+      await fetchFriends();
+      return true;
+    } catch (e) {
+      _setError('Ошибка принятия запроса: $e');
+      return false;
+    }
+  }
+  
+  /// Отклонить запрос в друзья
   Future<bool> declineFriendRequest(int requestId) async {
-    if (userProvider.accessToken == null) return false;
-
-    final url = Uri.parse('$baseUrl/api/friends/request/decline/$requestId/');
-    final resp = await userProvider.authPost(url);
-    debugPrint('declineFriendRequest($requestId) => ${resp.statusCode}: ${resp.body}');
-
-    if (resp.statusCode == 200 || resp.statusCode == 204) {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/friends/request/$requestId/decline/');
       _receivedRequests.removeWhere((r) => r.id == requestId);
       notifyListeners();
       return true;
-    }
-    return false;
-  }
-
-  Future<bool> cancelFriendRequest(int requestId) async {
-    if (userProvider.accessToken == null) return false;
-
-    try {
-      final url = Uri.parse('$baseUrl/api/friends/request/cancel/$requestId/');
-      final response = await userProvider.authPost(url);
-      debugPrint('cancelFriendRequest($requestId) => '
-          '${response.statusCode}: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        _sentRequests.removeWhere((r) => r.id == requestId);
-        notifyListeners();
-        return true;
-      }
     } catch (e) {
-      debugPrint('Ошибка отмены запроса: $e');
+      _setError('Ошибка отклонения запроса: $e');
+      return false;
     }
-
-    return false;
   }
-
-
-  // --- Утилиты ---
+  
+  /// Отменить отправленный запрос
+  Future<bool> cancelFriendRequest(int requestId) async {
+    if (!_api.isAuthenticated) return false;
+    
+    try {
+      await _api.post('/friends/request/$requestId/cancel/');
+      _sentRequests.removeWhere((r) => r.id == requestId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('Ошибка отмены запроса: $e');
+      return false;
+    }
+  }
+  
+  // ===================== ПОИСК =====================
+  
+  /// Поиск пользователей
+  Future<List<Friend>> searchUsers(String query) async {
+    if (query.isEmpty || !_api.isAuthenticated) return [];
+    
+    try {
+      final data = await _api.get('/users/search/?q=$query');
+      
+      if (data is List) {
+        return data
+            .map((e) => Friend.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else if (data is Map) {
+        final list = data['results'] as List? ?? [];
+        return list
+            .map((e) => Friend.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      
+      return [];
+    } catch (e) {
+      debugPrint('Ошибка поиска: $e');
+      return [];
+    }
+  }
+  
+  // ===================== УТИЛИТЫ =====================
+  
+  /// Очистить все данные
   void clearData() {
     _friends.clear();
     _receivedRequests.clear();
@@ -233,25 +276,24 @@ class FriendsProvider with ChangeNotifier {
     _isLoadingRequests = false;
     notifyListeners();
   }
-
-  Future<List<Friend>> searchUsers(String query) async {
-    if (query.isEmpty || userProvider.accessToken == null) return [];
-
-    try {
-      final url = Uri.parse('$baseUrl/api/users/search/?q=$query');
-      final response = await userProvider.authGet(url);
-      debugPrint('searchUsers("$query") => ${response.statusCode}: ${response.body}');
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data
-            .map((e) => Friend.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-    } catch (e) {
-      debugPrint('Ошибка поиска пользователей: $e');
-    }
-    return [];
+  
+  /// Обновить все данные (друзья и запросы)
+  Future<void> refreshAll() async {
+    await Future.wait([
+      fetchFriends(),
+      fetchFriendRequests(),
+    ]);
   }
-
-
+  
+  // ===================== ПРИВАТНЫЕ МЕТОДЫ =====================
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+  
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
+  }
 }

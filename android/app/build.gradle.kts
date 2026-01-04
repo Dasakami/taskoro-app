@@ -34,9 +34,9 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystorePropertiesFile = file("C:/Users/acer/StudioProjects/taskoro/keystore.properties")
+            val keystorePropertiesFile = rootProject.file("../keystore.properties")
             if (!keystorePropertiesFile.exists()) {
-                throw GradleException("keystore.properties file not found")
+                throw GradleException("keystore.properties file not found at ${keystorePropertiesFile.absolutePath}")
             }
 
             val props = Properties()

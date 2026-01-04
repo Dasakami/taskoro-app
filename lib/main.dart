@@ -50,17 +50,11 @@ void main() async {
   // Initialize API Service
   await ApiService().init();
   
-  // Initialize UserProvider
-  final userProvider = UserProvider();
-  await userProvider.init();
-  
-  runApp(MyApp(userProvider: userProvider));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  final UserProvider userProvider;
-  
-  const MyApp({required this.userProvider, super.key});
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -94,92 +88,26 @@ class _MyAppState extends State<MyApp> {
     return MultiProvider(
       providers: [
         // 1. UserProvider - основной провайдер
-        ChangeNotifierProvider<UserProvider>.value(
-          value: widget.userProvider,
+        ChangeNotifierProvider<UserProvider>(
+          create: (_) {
+            final provider = UserProvider();
+            provider.init();
+            return provider;
+          },
         ),
 
-        // 2. Провайдеры, зависящие от UserProvider
-        ChangeNotifierProxyProvider<UserProvider, ActivityLogProvider>(
-          create: (context) => ActivityLogProvider(
-            userProvider: context.read<UserProvider>(),
-          ),
-          update: (context, userProvider, previous) =>
-              previous ?? ActivityLogProvider(userProvider: userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, BaseTaskProvider>(
-          create: (context) => BaseTaskProvider(context.read<UserProvider>()),
-          update: (context, userProvider, previous) =>
-              previous ?? BaseTaskProvider(userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, TasksProvider>(
-          create: (context) => TasksProvider(
-            userProvider: context.read<UserProvider>(),
-          ),
-          update: (context, userProvider, previous) =>
-              previous ?? TasksProvider(userProvider: userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, NotesProvider>(
-          create: (context) => NotesProvider(context.read<UserProvider>()),
-          update: (context, userProvider, previous) =>
-              previous ?? NotesProvider(userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, AchievementProvider>(
-          create: (context) => AchievementProvider(
-            userProvider: context.read<UserProvider>(),
-          ),
-          update: (context, userProvider, previous) =>
-              previous ?? AchievementProvider(userProvider: userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, ShopProvider>(
-          create: (context) => ShopProvider(
-            userProvider: context.read<UserProvider>(),
-          ),
-          update: (context, userProvider, previous) =>
-              previous ?? ShopProvider(userProvider: userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, FriendsProvider>(
-          create: (context) => FriendsProvider(
-            userProvider: context.read<UserProvider>(),
-          ),
-          update: (context, userProvider, previous) =>
-              previous ?? FriendsProvider(userProvider: userProvider),
-        ),
-
-        ChangeNotifierProxyProvider<UserProvider, TournamentsProvider>(
-          create: (context) => TournamentsProvider(
-            userProvider: context.read<UserProvider>(),
-          ),
-          update: (context, userProvider, previous) =>
-              previous ?? TournamentsProvider(userProvider: userProvider),
-        ),
-
-        // 3. Провайдеры, зависящие от BaseTaskProvider
-        ChangeNotifierProxyProvider<BaseTaskProvider, BaseHabitProvider>(
-          create: (context) => BaseHabitProvider(
-            context.read<BaseTaskProvider>(),
-          ),
-          update: (context, baseTaskProvider, previous) =>
-              previous ?? BaseHabitProvider(baseTaskProvider),
-        ),
-
-        ChangeNotifierProxyProvider<BaseTaskProvider, BaseDailyProvider>(
-          create: (context) => BaseDailyProvider(
-            context.read<BaseTaskProvider>(),
-          ),
-          update: (context, baseTaskProvider, previous) =>
-              previous ?? BaseDailyProvider(baseTaskProvider),
-        ),
-
-        // 4. Независимые провайдеры
-        ChangeNotifierProvider(
-          create: (_) => DuelProvider(),
-        ),
+        // 2. Остальные провайдеры
+        ChangeNotifierProvider(create: (_) => ActivityLogProvider()),
+        ChangeNotifierProvider(create: (_) => BaseTaskProvider()),
+        ChangeNotifierProvider(create: (_) => BaseDailyProvider()),
+        ChangeNotifierProvider(create: (_) => BaseHabitProvider()),
+        ChangeNotifierProvider(create: (_) => TasksProvider()),
+        ChangeNotifierProvider(create: (_) => NotesProvider()),
+        ChangeNotifierProvider(create: (_) => AchievementProvider()),
+        ChangeNotifierProvider(create: (_) => ShopProvider()),
+        ChangeNotifierProvider(create: (_) => FriendsProvider()),
+        ChangeNotifierProvider(create: (_) => TournamentsProvider()),
+        ChangeNotifierProvider(create: (_) => DuelProvider()),
       ],
       child: MaterialApp(
         title: 'Daskoro — Игровая прокачка дисциплины и привычек',
@@ -239,7 +167,6 @@ class _MyAppState extends State<MyApp> {
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
-                          userProvider.clearError();
                           userProvider.init();
                         },
                         child: const Text('Повторить'),

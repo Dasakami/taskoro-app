@@ -4,6 +4,7 @@ import '../../models/friends_model.dart';
 import '../../providers/friends_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
+import '../../widgets/state_wrapper.dart';
 
 class FriendProfileScreen extends StatelessWidget {
   final Friend friend;
@@ -42,19 +43,11 @@ class FriendProfileScreen extends StatelessWidget {
       final success = await friendsProvider.removeFriend(friend.id);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? 'Друг удален из списка'
-                  : 'Ошибка удаления друга',
-            ),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
-
         if (success) {
+          AppSnackBar.showSuccess(context, message: 'Друг удален из списка');
           Navigator.of(context).pop();
+        } else {
+          AppSnackBar.showError(context, 'Ошибка удаления друга');
         }
       }
     }
@@ -164,11 +157,7 @@ class FriendProfileScreen extends StatelessWidget {
                           color: AppColors.accentPrimary,
                           onPressed: () {
                             // TODO: Открыть чат
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Функция сообщений пока недоступна'),
-                              ),
-                            );
+                            AppSnackBar.showError(context, 'Функция сообщений пока недоступна');
                           },
                         ),
                         _buildActionButton(
@@ -177,11 +166,7 @@ class FriendProfileScreen extends StatelessWidget {
                           color: AppColors.accentSecondary,
                           onPressed: () {
                             // TODO: Вызвать на дуэль
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Функция дуэлей пока недоступна'),
-                              ),
-                            );
+                            AppSnackBar.showError(context, 'Функция дуэлей пока недоступна');
                           },
                         ),
                         _buildActionButton(

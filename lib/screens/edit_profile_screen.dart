@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:taskoro/providers/user_provider.dart';
 import 'package:image_picker/image_picker.dart';
+import '../widgets/state_wrapper.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   const ProfileEditScreen({super.key});
@@ -66,15 +67,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         avatarUrl: _avatarUrl,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Профиль успешно обновлён')),
-      );
+      AppSnackBar.showSuccess(context, message: 'Профиль успешно обновлён');
 
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при обновлении профиля: $e')),
-      );
+      AppSnackBar.showError(context, 'Ошибка при обновлении профиля: $e');
     } finally {
       setState(() {
         _isSaving = false;

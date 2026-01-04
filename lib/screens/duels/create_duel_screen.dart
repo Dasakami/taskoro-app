@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../providers/duel_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/state_wrapper.dart';
 
 
 class CreateDuelScreen extends StatefulWidget {
@@ -38,18 +39,14 @@ class _CreateDuelScreenState extends State<CreateDuelScreen> {
           .map((e) => int.parse(e.trim()))
           .toList();
       await provider.createDuel(
-        token: token!,
         opponentId: _opponentId!,
         taskIds: taskIds,
         coinsStake: _coinsStake!,
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Дуэль создана!')),
-      );
+      AppSnackBar.showSuccess(context, message: 'Дуэль создана!');
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      AppSnackBar.showError(context, 'Ошибка: $e');
     } finally {
       setState(() => _isLoading = false);
     }

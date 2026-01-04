@@ -7,6 +7,7 @@ import '../../models/friends_model.dart';
 import '../../providers/friends_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
+import '../../widgets/state_wrapper.dart';
 
 class FriendRequestsScreen extends StatefulWidget {
   const FriendRequestsScreen({Key? key}) : super(key: key);
@@ -39,20 +40,10 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen>
     try {
       await context.read<FriendsProvider>().acceptFriendRequest(req.id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Заявка принята!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppSnackBar.showSuccess(context, message: 'Заявка принята!');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ошибка при принятии заявки'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackBar.showError(context, 'Ошибка при принятии заявки');
     }
   }
 
@@ -62,14 +53,11 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen>
     await context.read<FriendsProvider>().declineFriendRequest(req.id);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? 'Заявка отклонена' : 'Не удалось отклонить заявку',
-          ),
-          backgroundColor: success ? Colors.orange : Colors.red,
-        ),
-      );
+      if (success) {
+        AppSnackBar.showSuccess(context, message: 'Заявка отклонена');
+      } else {
+        AppSnackBar.showError(context, 'Не удалось отклонить заявку');
+      }
     }
   }
 
@@ -78,14 +66,11 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen>
     await context.read<FriendsProvider>().cancelFriendRequest(req.id);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? 'Заявка отменена' : 'Ошибка отмены заявки',
-          ),
-          backgroundColor: success ? Colors.orange : Colors.red,
-        ),
-      );
+      if (success) {
+        AppSnackBar.showSuccess(context, message: 'Заявка отменена');
+      } else {
+        AppSnackBar.showError(context, 'Ошибка отмены заявки');
+      }
     }
   }
 

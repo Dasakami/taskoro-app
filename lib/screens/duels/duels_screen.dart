@@ -24,8 +24,7 @@ class _DuelsScreenState extends State<DuelsScreen> {
   @override
   void initState() {
     super.initState();
-    final token = context.read<UserProvider>().accessToken;
-    _load = context.read<DuelProvider>().fetchDuels(token!);
+    _load = context.read<DuelProvider>().fetchDuels();
   }
 
   @override

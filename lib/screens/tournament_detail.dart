@@ -6,6 +6,7 @@ import '../models/tournaments_model.dart';
 import '../providers/tournaments_provider.dart';
 import '../screens/leaderboard_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/state_wrapper.dart';
 
 class TournamentDetailScreen extends StatelessWidget {
   static const routeName = '/tournament-detail';
@@ -134,16 +135,11 @@ class TournamentDetailScreen extends StatelessWidget {
                 if (t.isActive)
                   ElevatedButton(
                     onPressed: () async {
-                      try {
+                        try {
                         await prov.joinTournament(t.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Успешно присоединились')),
-                        );
+                        AppSnackBar.showSuccess(context, message: 'Успешно присоединились');
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Ошибка: $e')),
-                        );
+                        AppSnackBar.showError(context, 'Ошибка: $e');
                       }
                     },
                     child: const Text('Присоединиться'),

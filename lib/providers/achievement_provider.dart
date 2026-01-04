@@ -1,53 +1,59 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:taskoro/providers/user_provider.dart';
-
 import '../models/achievement_model.dart';
+import '../services/api_service.dart';
 
 class AchievementProvider extends ChangeNotifier {
+  final ApiService _api = ApiService();
+  
   List<Achievement> _achievements = [];
-  final UserProvider userProvider;
-  AchievementProvider({required this.userProvider});
   bool _isLoading = false;
-  String? _errorMessage;
-
+  String? _error;
+  
   List<Achievement> get achievements => _achievements;
+  List<Achievement> get unlockedAchievements => _achievements.where((a) => a.isAcquired).toList();
+  List<Achievement> get lockedAchievements => _achievements.where((a) => !a.isAcquired).toList();
   int get totalCount => _achievements.length;
-  int get acquiredCount => _achievements.where((a) => a.isAcquired).length;
+  int get acquiredCount => unlockedAchievements.length;
+  
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
-
-  final String apiUrl = 'https://daskoro.site/api/history/achievements/';
-
-  Future<void> fetchAchievements(String accessToken) async {
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
-
+  String? get error => _error;
+  
+  Future<void> fetchAchievements() async {
+    if (!_api.isAuthenticated) return;
+    
+    _setLoading(true);
+    _setError(null);
+    
     try {
-
-      final response = await userProvider.authGet(Uri.parse(apiUrl),);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        List<dynamic> achievementsJson = data['achievements'];
-        _achievements = achievementsJson
-            .map((json) => Achievement.fromJson(json))
-            .toList();
-
-        _isLoading = false;
-        notifyListeners();
-      } else {
-        _errorMessage = 'Ошибка загрузки достижений: ${response.statusCode}';
-        _isLoading = false;
-        notifyListeners();
+      final data = await _api.get('/history/achievements/');
+      
+      if (data is List) {
+        _achievements = data.map((e) => Achievement.fromJson(e as Map<String, dynamic>)).toList();
+      } else if (data is Map) {
+        final list = data['achievements'] as List? ?? [];
+        _achievements = list.map((e) => Achievement.fromJson(e as Map<String, dynamic>)).toList();
       }
     } catch (e) {
-      _errorMessage = 'Ошибка сети: $e';
-      _isLoading = false;
-      notifyListeners();
+      _setError('Ошибка загрузки достижений: $e');
+    } finally {
+      _setLoading(false);
     }
+  }
+  
+  void clearData() {
+    _achievements.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+  
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
   }
 }

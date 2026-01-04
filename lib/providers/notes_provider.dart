@@ -1,63 +1,165 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:taskoro/providers/user_provider.dart';
-
 import '../models/note_model.dart';
+import '../services/api_service.dart';
 
-class NotesProvider with ChangeNotifier {
-  final UserProvider userProvider;
+/// Провайдер для управления заметками
+class NotesProvider extends ChangeNotifier {
+  final ApiService _api = ApiService();
+  
+  // Данные
   List<Note> _notes = [];
-
-  NotesProvider(this.userProvider);
-
+  bool _isLoading = false;
+  String? _error;
+  
+  // ===================== GETTERS =====================
+  
+  List<Note> get allNotes => _notes;
   List<Note> get activeNotes => _notes.where((n) => !n.isDeleted).toList();
   List<Note> get deletedNotes => _notes.where((n) => n.isDeleted).toList();
-
+  
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  
+  // ===================== ЗАГРУЗКА ДАННЫХ =====================
+  
   Future<void> fetchNotes() async {
-    final response = await userProvider.authGet(
-      Uri.parse('https://daskoro.site/api/notes/notes/'),
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      _notes = List<Note>.from(data.map((e) => Note.fromJson(e)));
+    if (!_api.isAuthenticated) {
+      _notes = [];
       notifyListeners();
+      return;
+    }
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      final data = await _api.get('/notes/notes/');
+      
+      if (data is List) {
+        _notes = data
+            .map((e) => Note.fromJson(e as Map<String, dynamic>))
+            .toList();
+      } else if (data is Map) {
+        final list = data['notes'] as List? ?? [];
+        _notes = list
+            .map((e) => Note.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (e) {
+      _setError('Ошибка загрузки заметок: $e');
+    } finally {
+      _setLoading(false);
     }
   }
-
-
+  
+  // ===================== СОЗДАНИЕ И РЕДАКТИРОВАНИЕ =====================
+  
   Future<void> createNote(String title, String? content) async {
-    final response = await userProvider.authPost(
-      Uri.parse('https://daskoro.site/api/notes/notes/'),
-      body: json.encode({
+    if (!_api.isAuthenticated) {
+      _setError('Не авторизован');
+      return;
+    }
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      await _api.post('/notes/notes/', body: {
         'title': title,
         'content': content,
-      }),
-    );
-
-    if (response.statusCode == 201) {
+      });
       await fetchNotes();
+    } catch (e) {
+      _setError('Ошибка создания заметки: $e');
+    } finally {
+      _setLoading(false);
     }
   }
-
+  
   Future<void> updateNote(int id, String title, String? content) async {
-    await userProvider.authPut(
-      Uri.parse('https://daskoro.site/api/notes/notes/$id/'),
-      body: json.encode({
+    if (!_api.isAuthenticated) {
+      _setError('Не авторизован');
+      return;
+    }
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      await _api.put('/notes/notes/$id/', body: {
         'title': title,
         'content': content,
-      }),
-    );
-    await fetchNotes();
+      });
+      await fetchNotes();
+    } catch (e) {
+      _setError('Ошибка обновления заметки: $e');
+    } finally {
+      _setLoading(false);
+    }
   }
-
+  
+  // ===================== УДАЛЕНИЕ И ВОССТАНОВЛЕНИЕ =====================
+  
   Future<void> deleteNote(int id) async {
-    await userProvider.authPatch(
-      Uri.parse('https://daskoro.site/api/notes/notes/$id/'),
-      body: json.encode({'is_deleted': true}),
-    );
-    await fetchNotes();
+    if (!_api.isAuthenticated) {
+      _setError('Не авторизован');
+      return;
+    }
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      await _api.patch('/notes/notes/$id/', body: {'is_deleted': true});
+      await fetchNotes();
+    } catch (e) {
+      _setError('Ошибка удаления заметки: $e');
+    } finally {
+      _setLoading(false);
+    }
   }
+  
+  Future<void> restoreNote(int id) async {
+    if (!_api.isAuthenticated) {
+      _setError('Не авторизован');
+      return;
+    }
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      await _api.patch('/notes/notes/$id/', body: {'is_deleted': false});
+      await fetchNotes();
+    } catch (e) {
+      _setError('Ошибка восстановления заметки: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  /// Безвозвратное удаление
+  Future<void> deleteNotePermanently(int id) async {
+    if (!_api.isAuthenticated) {
+      _setError('Не авторизован');
+      return;
+    }
+    
+    _setLoading(true);
+    _setError(null);
+    
+    try {
+      await _api.delete('/notes/notes/$id/');
+      await fetchNotes();
+    } catch (e) {
+      _setError('Ошибка удаления заметки: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
+  // ===================== УТИЛИТЫ =====================
+  
   Note? getNoteById(int id) {
     try {
       return _notes.firstWhere((note) => note.id == id);
@@ -65,13 +167,23 @@ class NotesProvider with ChangeNotifier {
       return null;
     }
   }
-
-
-  Future<void> restoreNote(int id) async {
-    await userProvider.authPatch(
-      Uri.parse('https://daskoro.site/api/notes/notes/$id/'),
-      body: json.encode({'is_deleted': false}),
-    );
-    await fetchNotes();
+  
+  void clearData() {
+    _notes.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+  
+  // ===================== ПРИВАТНЫЕ МЕТОДЫ =====================
+  
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+  
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
   }
 }

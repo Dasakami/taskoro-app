@@ -5,6 +5,7 @@ import '../../providers/duel_provider.dart';
 import '../../providers/tasks_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/state_wrapper.dart';
 
 class TaskStakeScreen extends StatefulWidget {
   static const routeName = '/duel-create';
@@ -27,39 +28,29 @@ class _TaskStakeScreenState extends State<TaskStakeScreen> {
 
   Future<void> _submit(int opponentId) async {
     if (_selectedTaskId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пожалуйста, выберите задачу')),
-      );
+      AppSnackBar.showError(context, 'Пожалуйста, выберите задачу');
       return;
     }
     final stakeText = _stakeCtrl.text.trim();
     final stake = int.tryParse(stakeText);
     if (stake == null || stake <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите корректную ставку')),
-      );
+      AppSnackBar.showError(context, 'Введите корректную ставку');
       return;
     }
 
-    final token = context.read<UserProvider>().accessToken;
     setState(() => _isLoading = true);
 
     try {
       await context.read<DuelProvider>().createDuel(
-        token: token!,
         opponentId: opponentId,
         taskIds: [_selectedTaskId!],
         coinsStake: stake,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Дуэль успешно создана')),
-      );
+      AppSnackBar.showSuccess(context, message: 'Дуэль успешно создана');
       Navigator.of(context).pop();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка при создании дуэли: $e')),
-      );
+      AppSnackBar.showError(context, 'Ошибка при создании дуэли: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

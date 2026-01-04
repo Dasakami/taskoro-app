@@ -25,12 +25,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
   Future<void> _loadAchievements() async {
     setState(() => _isLoading = true);
 
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
     final achievementsProvider = Provider.of<AchievementProvider>(context, listen: false);
-
-    if (userProvider.accessToken != null) {
-      await achievementsProvider.fetchAchievements(userProvider.accessToken!);
-    }
+    await achievementsProvider.fetchAchievements();
 
     setState(() => _isLoading = false);
   }

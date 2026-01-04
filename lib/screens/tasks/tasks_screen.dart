@@ -81,7 +81,8 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
     final updatedTask = await provider.completeTaskById(task.id!);
 
     if (updatedTask != null && updatedTask.isCompleted) {
-      _showCompletionDialog(updatedTask);
+      final displayedTask = (updatedTask.title.isEmpty) ? updatedTask.copyWith(title: task.title) : updatedTask;
+      _showCompletionDialog(displayedTask);
     } else {
       debugPrint("Задача не была помечена выполненной или произошла ошибка");
     }
@@ -94,17 +95,17 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.backgroundSecondary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
+        title: Row(
+          children: const [
             Icon(Icons.celebration, color: Colors.amber),
             SizedBox(width: 8),
-            Text('Поздравляем!'),
+            Text('Поздравляем!', style: TextStyle(color: AppColors.textPrimary)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Вы выполнили задачу "${task.title}"!'),
+            Text('Вы выполнили задачу "${task.title}"!', style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -120,7 +121,7 @@ class _TasksScreenState extends State<TasksScreen> with SingleTickerProviderStat
                     children: [
                       const Icon(Icons.monetization_on, color: AppColors.accentPrimary),
                       const SizedBox(width: 4),
-                      Text('${task.coins}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${task.coinsReward}', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
