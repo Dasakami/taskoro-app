@@ -41,7 +41,7 @@ class BaseHabitDetailScreen extends StatelessWidget {
                       : () async {
                     final ok = await prov.complete(task);
                     if (ok) {
-                      AppSnackBar.showSuccess(context, message: 'Получено ${task.xpReward} XP');
+                      AppSnackBar.showSuccess(context, 'Получено ${task.xpReward} XP');
                     } else {
                       AppSnackBar.showError(context, 'Ошибка');
                     }

@@ -47,7 +47,7 @@ class _TaskStakeScreenState extends State<TaskStakeScreen> {
         coinsStake: stake,
       );
 
-      AppSnackBar.showSuccess(context, message: 'Дуэль успешно создана');
+      AppSnackBar.showSuccess(context, 'Дуэль успешно создана');
       Navigator.of(context).pop();
     } catch (e) {
       AppSnackBar.showError(context, 'Ошибка при создании дуэли: $e');

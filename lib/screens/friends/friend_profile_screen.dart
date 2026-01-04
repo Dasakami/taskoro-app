@@ -44,7 +44,7 @@ class FriendProfileScreen extends StatelessWidget {
 
       if (context.mounted) {
         if (success) {
-          AppSnackBar.showSuccess(context, message: 'Друг удален из списка');
+          AppSnackBar.showSuccess(context, 'Друг удален из списка');
           Navigator.of(context).pop();
         } else {
           AppSnackBar.showError(context, 'Ошибка удаления друга');

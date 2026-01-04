@@ -412,7 +412,7 @@ class ShopItemDetailScreen extends StatelessWidget {
         gems: item.currency == 'gems' ? -item.price : 0,
       );
 
-      AppSnackBar.showSuccess(context, message: '${item.name} успешно куплен!');
+      AppSnackBar.showSuccess(context, '${item.name} успешно куплен!');
     } else {
       AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка покупки');
     }
@@ -429,7 +429,7 @@ class ShopItemDetailScreen extends StatelessWidget {
     }
 
     if (success) {
-      AppSnackBar.showSuccess(context, message: isEquipped ? 'Предмет снят' : 'Предмет экипирован');
+      AppSnackBar.showSuccess(context, isEquipped ? 'Предмет снят' : 'Предмет экипирован');
     } else {
       AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка');
     }
@@ -441,7 +441,7 @@ class ShopItemDetailScreen extends StatelessWidget {
     final success = await shopProvider.equipItem(purchase.id);
 
     if (success) {
-      AppSnackBar.showSuccess(context, message: 'Буст активирован!');
+      AppSnackBar.showSuccess(context, 'Буст активирован!');
     } else {
       AppSnackBar.showError(context, shopProvider.error ?? 'Ошибка активации');
     }

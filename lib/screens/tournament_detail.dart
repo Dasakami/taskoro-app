@@ -137,7 +137,7 @@ class TournamentDetailScreen extends StatelessWidget {
                     onPressed: () async {
                         try {
                         await prov.joinTournament(t.id);
-                        AppSnackBar.showSuccess(context, message: 'Успешно присоединились');
+                        AppSnackBar.showSuccess(context, 'Успешно присоединились');
                       } catch (e) {
                         AppSnackBar.showError(context, 'Ошибка: $e');
                       }

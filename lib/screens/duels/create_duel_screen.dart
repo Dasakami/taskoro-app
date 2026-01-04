@@ -43,7 +43,7 @@ class _CreateDuelScreenState extends State<CreateDuelScreen> {
         taskIds: taskIds,
         coinsStake: _coinsStake!,
       );
-      AppSnackBar.showSuccess(context, message: 'Дуэль создана!');
+      AppSnackBar.showSuccess(context, 'Дуэль создана!');
       Navigator.of(context).pop();
     } catch (e) {
       AppSnackBar.showError(context, 'Ошибка: $e');

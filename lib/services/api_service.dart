@@ -17,8 +17,8 @@ class ApiException implements Exception {
 /// Центральный сервис для всех API запросов
 class ApiService {
   // API конфигурация
-  static const String baseUrl = 'http://192.168.0.102:8000/api';
-  static const String authUrl = 'http://192.168.0.102:8000';
+  static const String baseUrl = 'http://172.31.47.53:8000/api';
+  static const String authUrl = 'http://172.31.47.53:8000';
   
   // Ключи хранилища
   static const String _accessTokenKey = 'access_token';

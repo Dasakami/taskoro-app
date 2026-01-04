@@ -51,7 +51,7 @@ class _FindFriendsScreenState extends State<FindFriendsScreen> {
 
     if (mounted) {
       if (success) {
-        AppSnackBar.showSuccess(context, message: 'Заявка в друзья отправлена!');
+        AppSnackBar.showSuccess(context, 'Заявка в друзья отправлена!');
       } else {
         AppSnackBar.showError(context, 'Ошибка отправки заявки');
       }

@@ -67,7 +67,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         avatarUrl: _avatarUrl,
       );
 
-      AppSnackBar.showSuccess(context, message: 'Профиль успешно обновлён');
+      AppSnackBar.showSuccess(context, 'Профиль успешно обновлён');
 
       Navigator.of(context).pop();
     } catch (e) {

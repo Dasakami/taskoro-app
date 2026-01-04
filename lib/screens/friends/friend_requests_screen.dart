@@ -40,7 +40,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen>
     try {
       await context.read<FriendsProvider>().acceptFriendRequest(req.id);
       if (!mounted) return;
-      AppSnackBar.showSuccess(context, message: 'Заявка принята!');
+      AppSnackBar.showSuccess(context, 'Заявка принята!');
     } catch (e) {
       if (!mounted) return;
       AppSnackBar.showError(context, 'Ошибка при принятии заявки');
@@ -54,7 +54,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen>
 
     if (mounted) {
       if (success) {
-        AppSnackBar.showSuccess(context, message: 'Заявка отклонена');
+        AppSnackBar.showSuccess(context, 'Заявка отклонена');
       } else {
         AppSnackBar.showError(context, 'Не удалось отклонить заявку');
       }
@@ -67,7 +67,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen>
 
     if (mounted) {
       if (success) {
-        AppSnackBar.showSuccess(context, message: 'Заявка отменена');
+        AppSnackBar.showSuccess(context, 'Заявка отменена');
       } else {
         AppSnackBar.showError(context, 'Ошибка отмены заявки');
       }
