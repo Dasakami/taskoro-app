@@ -21,14 +21,21 @@ class BaseHabitProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final data = await _api.get('/tasks/tasks/?task_type=habit');
+      final data = await _api.get('/tasks/base-tasks/?task_type=habit');
       
       if (data is List) {
         _habits = data.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
       } else if (data is Map) {
-        final list = data['habits'] as List? ?? [];
+        final list = data['habits'] as List? ?? data['tasks'] as List? ?? [];
         _habits = list.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
       }
+      
+      // Сортируем: невыполненные сначала
+      _habits.sort((a, b) {
+        if (a.completed != b.completed) return a.completed ? 1 : -1;
+        return a.title.compareTo(b.title);
+      });
+      
     } catch (e) {
       _setError('Ошибка загрузки привычек: $e');
     } finally {
@@ -38,8 +45,22 @@ class BaseHabitProvider extends ChangeNotifier {
   
   Future<bool> logHabit(int habitId) async {
     try {
-      await _api.post('/tasks/tasks/$habitId/complete/');
-      await fetchHabits();
+      await _api.post('/tasks/base-tasks/$habitId/complete/');
+      
+      // Обновляем локальное состояние
+      final index = _habits.indexWhere((t) => t.id == habitId);
+      if (index != -1) {
+        _habits[index] = _habits[index].copyWith(completed: true);
+        
+        // Пересортировываем
+        _habits.sort((a, b) {
+          if (a.completed != b.completed) return a.completed ? 1 : -1;
+          return a.title.compareTo(b.title);
+        });
+        
+        notifyListeners();
+      }
+      
       return true;
     } catch (e) {
       _setError('Ошибка логирования привычки: $e');

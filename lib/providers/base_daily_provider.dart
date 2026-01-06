@@ -31,7 +31,7 @@ class BaseDailyProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final data = await _api.get('/tasks/tasks/?task_type=daily');
+      final data = await _api.get('/tasks/base-tasks/?task_type=daily');
       
       if (data is List) {
         _dailyTasks = data.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -39,6 +39,13 @@ class BaseDailyProvider extends ChangeNotifier {
         final list = data['tasks'] as List? ?? [];
         _dailyTasks = list.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
       }
+      
+      // Сортируем: невыполненные сначала
+      _dailyTasks.sort((a, b) {
+        if (a.completed != b.completed) return a.completed ? 1 : -1;
+        return a.title.compareTo(b.title);
+      });
+      
     } catch (e) {
       _setError('Ошибка загрузки ежедневных задач: $e');
     } finally {
@@ -48,8 +55,22 @@ class BaseDailyProvider extends ChangeNotifier {
   
   Future<bool> completeDailyTask(int taskId) async {
     try {
-      await _api.post('/tasks/tasks/$taskId/complete/');
-      await fetchDailyTasks();
+      await _api.post('/tasks/base-tasks/$taskId/complete/');
+      
+      // Обновляем локальное состояние
+      final index = _dailyTasks.indexWhere((t) => t.id == taskId);
+      if (index != -1) {
+        _dailyTasks[index] = _dailyTasks[index].copyWith(completed: true);
+        
+        // Пересортировываем
+        _dailyTasks.sort((a, b) {
+          if (a.completed != b.completed) return a.completed ? 1 : -1;
+          return a.title.compareTo(b.title);
+        });
+        
+        notifyListeners();
+      }
+      
       return true;
     } catch (e) {
       _setError('Ошибка выполнения задачи: $e');

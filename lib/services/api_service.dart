@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +15,7 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Центральный сервис для всех API запросов с автообновлением токенов
+/// Центральный сервис для всех API запросов
 class ApiService {
   // API конфигурация
   static const String baseUrl = 'http://10.77.141.53:8000/api';
@@ -24,17 +25,15 @@ class ApiService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userIdKey = 'user_id';
-  static const String _tokenExpiryKey = 'token_expiry';
   
   // Токены
   String? _accessToken;
   String? _refreshToken;
   int? _userId;
-  DateTime? _tokenExpiry;
   
   // Состояние
   bool _isRefreshing = false;
-  final List<Completer<void>> _pendingRequests = [];
+  final List<Future<void> Function()> _pendingRequests = [];
   
   // Singleton pattern
   static final ApiService _instance = ApiService._internal();
@@ -48,24 +47,6 @@ class ApiService {
     _accessToken = prefs.getString(_accessTokenKey);
     _refreshToken = prefs.getString(_refreshTokenKey);
     _userId = prefs.getInt(_userIdKey);
-    
-    final expiryStr = prefs.getString(_tokenExpiryKey);
-    if (expiryStr != null) {
-      _tokenExpiry = DateTime.tryParse(expiryStr);
-    }
-    
-    // Проверяем, не истек ли токен
-    if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
-      // Токен истек, попробуем обновить
-      if (_refreshToken != null) {
-        try {
-          await _refreshAccessToken();
-        } catch (e) {
-          // Если не удалось обновить, очищаем токены
-          await clearTokens();
-        }
-      }
-    }
   }
   
   // ===================== УПРАВЛЕНИЕ ТОКЕНАМИ =====================
@@ -75,13 +56,9 @@ class ApiService {
     _refreshToken = refreshToken;
     if (userId != null) _userId = userId;
     
-    // Access token живет 15 минут по умолчанию
-    _tokenExpiry = DateTime.now().add(const Duration(minutes: 14));
-    
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_accessTokenKey, accessToken);
     await prefs.setString(_refreshTokenKey, refreshToken);
-    await prefs.setString(_tokenExpiryKey, _tokenExpiry!.toIso8601String());
     if (userId != null) {
       await prefs.setInt(_userIdKey, userId);
     }
@@ -91,7 +68,6 @@ class ApiService {
     _accessToken = null;
     _refreshToken = null;
     _userId = null;
-    _tokenExpiry = null;
     _isRefreshing = false;
     _pendingRequests.clear();
     
@@ -99,19 +75,12 @@ class ApiService {
     await prefs.remove(_accessTokenKey);
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userIdKey);
-    await prefs.remove(_tokenExpiryKey);
   }
   
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   int? get userId => _userId;
   bool get isAuthenticated => _accessToken != null && _refreshToken != null;
-  
-  /// Проверить, не истек ли токен (с запасом 1 минута)
-  bool get _isTokenExpired {
-    if (_tokenExpiry == null) return false;
-    return DateTime.now().isAfter(_tokenExpiry!.subtract(const Duration(minutes: 1)));
-  }
   
   // ===================== ХЕДЕРЫ =====================
   
@@ -124,127 +93,181 @@ class ApiService {
     if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
   };
   
+  Map<String, String> get _authHeadersWithoutContentType => {
+    if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
+  };
+  
   // ===================== ОБРАБОТКА ЗАПРОСОВ =====================
   
-  /// Выполнить GET запрос
+  /// Выполнить GET запрос и вернуть декодированные данные
   Future<dynamic> get(String path, {bool auth = true}) async {
-    return await _makeRequest('GET', path, auth: auth);
+    final url = Uri.parse('$baseUrl$path');
+    final response = await _handleRequest(() => http.get(
+      url,
+      headers: auth ? _authHeaders : _headers,
+    ));
+    return _decodeResponse(response);
   }
   
-  /// Выполнить POST запрос
-  Future<dynamic> post(String path, {dynamic body, bool auth = true}) async {
-    return await _makeRequest('POST', path, body: body, auth: auth);
+  /// Выполнить POST запрос и вернуть декодированные данные
+  Future<dynamic> post(
+    String path,
+    {dynamic body, bool auth = true}
+  ) async {
+    final url = Uri.parse('$baseUrl$path');
+    final response = await _handleRequest(() => http.post(
+      url,
+      headers: auth ? _authHeaders : _headers,
+      body: jsonEncode(body ?? {}),
+    ));
+    return _decodeResponse(response);
   }
   
-  /// Выполнить PUT запрос
-  Future<dynamic> put(String path, {dynamic body, bool auth = true}) async {
-    return await _makeRequest('PUT', path, body: body, auth: auth);
+  /// Выполнить PUT запрос и вернуть декодированные данные
+  Future<dynamic> put(
+    String path,
+    {dynamic body, bool auth = true}
+  ) async {
+    final url = Uri.parse('$baseUrl$path');
+    final response = await _handleRequest(() => http.put(
+      url,
+      headers: auth ? _authHeaders : _headers,
+      body: jsonEncode(body ?? {}),
+    ));
+    return _decodeResponse(response);
   }
   
-  /// Выполнить PATCH запрос
-  Future<dynamic> patch(String path, {dynamic body, bool auth = true}) async {
-    return await _makeRequest('PATCH', path, body: body, auth: auth);
+  /// Выполнить PATCH запрос и вернуть декодированные данные
+  Future<dynamic> patch(
+    String path,
+    {dynamic body, bool auth = true}
+  ) async {
+    final url = Uri.parse('$baseUrl$path');
+    final response = await _handleRequest(() => http.patch(
+      url,
+      headers: auth ? _authHeaders : _headers,
+      body: jsonEncode(body ?? {}),
+    ));
+    return _decodeResponse(response);
   }
   
-  /// Выполнить DELETE запрос
+  /// Выполнить multipart запрос (для загрузки файлов)
+  Future<dynamic> multipartRequest(
+    String method,
+    String path, {
+    Map<String, String>? fields,
+    Map<String, File>? files,
+    bool auth = true,
+  }) async {
+    final url = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest(method, url);
+    
+    // Добавляем заголовки авторизации
+    if (auth && _accessToken != null) {
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+    
+    // Добавляем текстовые поля
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+    
+    // Добавляем файлы
+    if (files != null) {
+      for (var entry in files.entries) {
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, entry.value.path),
+        );
+      }
+    }
+    
+    final streamedResponse = await _handleRequest(() => request.send());
+    final response = await http.Response.fromStream(streamedResponse);
+    return _decodeResponse(response);
+  }
+  
+  /// Выполнить DELETE запрос и вернуть декодированные данные
   Future<dynamic> delete(String path, {bool auth = true}) async {
-    return await _makeRequest('DELETE', path, auth: auth);
+    final url = Uri.parse('$baseUrl$path');
+    final response = await _handleRequest(() => http.delete(
+      url,
+      headers: auth ? _authHeaders : _headers,
+    ));
+    return _decodeResponse(response);
   }
   
-  /// Логин (специальный метод)
-  Future<dynamic> login(String username, String password) async {
+  /// Логин - специальный запрос, возвращает response
+  Future<http.Response> login(String username, String password) async {
     final url = Uri.parse('$authUrl/api/token/');
     final response = await http.post(
       url,
       headers: _headers,
       body: jsonEncode({'username': username, 'password': password}),
     );
-    return _decodeResponse(response);
+    return response;
   }
   
-  // ===================== ВНУТРЕННИЕ МЕТОДЫ =====================
+  // ===================== ПРИВАТНЫЕ МЕТОДЫ =====================
   
-  /// Универсальный метод для выполнения запросов
-  Future<dynamic> _makeRequest(
-    String method,
-    String path,
-    {dynamic body, bool auth = true}
-  ) async {
-    // Проверяем токен перед запросом
-    if (auth && _isTokenExpired && _refreshToken != null) {
-      await _ensureValidToken();
-    }
-    
-    final url = Uri.parse('$baseUrl$path');
-    final headers = auth ? _authHeaders : _headers;
-    
+  Future<T> _handleRequest<T>(Future<T> Function() request) async {
     try {
-      http.Response response;
+      var response = await request();
       
-      switch (method) {
-        case 'GET':
-          response = await http.get(url, headers: headers);
-          break;
-        case 'POST':
-          response = await http.post(url, headers: headers, body: body != null ? jsonEncode(body) : null);
-          break;
-        case 'PUT':
-          response = await http.put(url, headers: headers, body: body != null ? jsonEncode(body) : null);
-          break;
-        case 'PATCH':
-          response = await http.patch(url, headers: headers, body: body != null ? jsonEncode(body) : null);
-          break;
-        case 'DELETE':
-          response = await http.delete(url, headers: headers);
-          break;
-        default:
-          throw ApiException('Неподдерживаемый метод: $method');
+      // Для обычных Response проверяем статус код
+      if (response is http.Response) {
+        // Автоматическое обновление токена при 401
+        if (response.statusCode == 401 && _refreshToken != null) {
+          if (_isRefreshing) {
+            await _waitForTokenRefresh();
+            return await _handleRequest(request);
+          }
+          
+          _isRefreshing = true;
+          try {
+            await _refreshAccessToken();
+            _isRefreshing = false;
+            return await _handleRequest(request);
+          } catch (e) {
+            _isRefreshing = false;
+            await clearTokens();
+            rethrow;
+          }
+        }
       }
       
-      // Если получили 401, пробуем обновить токен
-      if (response.statusCode == 401 && auth && _refreshToken != null) {
-        await _ensureValidToken();
-        // Повторяем запрос с новым токеном
-        return await _makeRequest(method, path, body: body, auth: auth);
+      // Для StreamedResponse также проверяем статус
+      if (response is http.StreamedResponse) {
+        if (response.statusCode == 401 && _refreshToken != null) {
+          if (_isRefreshing) {
+            await _waitForTokenRefresh();
+            return await _handleRequest(request);
+          }
+          
+          _isRefreshing = true;
+          try {
+            await _refreshAccessToken();
+            _isRefreshing = false;
+            return await _handleRequest(request);
+          } catch (e) {
+            _isRefreshing = false;
+            await clearTokens();
+            rethrow;
+          }
+        }
       }
       
-      return _decodeResponse(response);
+      return response;
     } catch (e) {
       throw ApiException('Ошибка сети: $e');
     }
   }
   
-  /// Гарантировать валидность токена
-  Future<void> _ensureValidToken() async {
-    if (_isRefreshing) {
-      // Если уже обновляем, ждем завершения
-      final completer = Completer<void>();
-      _pendingRequests.add(completer);
-      await completer.future;
-      return;
-    }
-    
-    _isRefreshing = true;
-    try {
-      await _refreshAccessToken();
-      // Уведомляем ожидающие запросы
-      for (final completer in _pendingRequests) {
-        completer.complete();
-      }
-      _pendingRequests.clear();
-    } catch (e) {
-      // Уведомляем об ошибке
-      for (final completer in _pendingRequests) {
-        completer.completeError(e);
-      }
-      _pendingRequests.clear();
-      rethrow;
-    } finally {
-      _isRefreshing = false;
-    }
+  Future<void> _waitForTokenRefresh() async {
+    final completer = Completer<void>();
+    _pendingRequests.add(() async => completer.complete());
+    await completer.future;
   }
   
-  /// Обновить access token используя refresh token
   Future<void> _refreshAccessToken() async {
     if (_refreshToken == null) {
       throw ApiException('Refresh token отсутствует');
@@ -259,52 +282,42 @@ class ApiService {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final newAccessToken = data['access'] as String;
-        
-        // Обновляем только access token, refresh остается прежним
-        _accessToken = newAccessToken;
-        _tokenExpiry = DateTime.now().add(const Duration(minutes: 14));
+        _accessToken = data['access'];
         
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_accessTokenKey, newAccessToken);
-        await prefs.setString(_tokenExpiryKey, _tokenExpiry!.toIso8601String());
-      } else if (response.statusCode == 401) {
-        // Refresh token истек
-        await clearTokens();
-        throw ApiException('Refresh token истек, требуется повторная авторизация');
+        await prefs.setString(_accessTokenKey, _accessToken!);
+        
+        // Выполнить отложенные запросы
+        for (final req in _pendingRequests) {
+          await req();
+        }
+        _pendingRequests.clear();
       } else {
-        throw ApiException('Не удалось обновить токен: ${response.statusCode}');
+        await clearTokens();
+        throw ApiException('Не удалось обновить токен');
       }
     } catch (e) {
-      if (e is ApiException) rethrow;
+      await clearTokens();
       throw ApiException('Ошибка обновления токена: $e');
     }
   }
   
-  /// Декодировать ответ сервера
+  /// Декодировать ответ сервера в список или карту
   dynamic _decodeResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};
       
       try {
-        return jsonDecode(response.body);
+        final decoded = jsonDecode(response.body);
+        return decoded;
       } catch (e) {
         throw ApiException('Ошибка декодирования ответа: $e');
       }
-    } else if (response.statusCode == 401) {
-      throw ApiException('Не авторизован', statusCode: 401);
     } else {
-      String message = 'Ошибка сервера: ${response.statusCode}';
-      try {
-        final data = jsonDecode(response.body);
-        if (data is Map && data.containsKey('detail')) {
-          message = data['detail'];
-        } else if (data is Map && data.containsKey('error')) {
-          message = data['error'];
-        }
-      } catch (_) {}
-      
-      throw ApiException(message, statusCode: response.statusCode);
+      throw ApiException(
+        'Ошибка сервера: ${response.statusCode} - ${response.body}',
+        statusCode: response.statusCode,
+      );
     }
   }
 }

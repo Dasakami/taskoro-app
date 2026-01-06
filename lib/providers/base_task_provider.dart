@@ -14,10 +14,10 @@ class BaseTaskProvider extends ChangeNotifier {
   String? get error => _error;
   bool get loading => _isLoading;
   
-  /// Getters для совместимости
-  List<BaseTaskModel> get oneTimers => _tasks;
-  List<BaseTaskModel> get dailies => _tasks;
-  List<BaseTaskModel> get habits => _tasks;
+  /// Getters для фильтрации по типу
+  List<BaseTaskModel> get oneTimers => _tasks.where((t) => t.type == BaseTaskType.oneTime).toList();
+  List<BaseTaskModel> get dailies => _tasks.where((t) => t.type == BaseTaskType.daily).toList();
+  List<BaseTaskModel> get habits => _tasks.where((t) => t.type == BaseTaskType.habit).toList();
   
   Future<void> fetchBaseTasks() async {
     if (!_api.isAuthenticated) return;
@@ -31,9 +31,17 @@ class BaseTaskProvider extends ChangeNotifier {
       if (data is List) {
         _tasks = data.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
       } else if (data is Map) {
-        final list = data['tasks'] as List? ?? [];
+        final list = data['tasks'] as List? ?? data['base_tasks'] as List? ?? [];
         _tasks = list.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
       }
+      
+      // Сортируем задачи: невыполненные сначала, затем по типу и сложности
+      _tasks.sort((a, b) {
+        if (a.completed != b.completed) return a.completed ? 1 : -1;
+        if (a.type != b.type) return a.type.index.compareTo(b.type.index);
+        return a.title.compareTo(b.title);
+      });
+      
     } catch (e) {
       _setError('Ошибка загрузки базовых задач: $e');
     } finally {
@@ -43,8 +51,23 @@ class BaseTaskProvider extends ChangeNotifier {
   
   Future<bool> completeBaseTask(int taskId) async {
     try {
-      await _api.post('/tasks/base-tasks/$taskId/complete/');
-      await fetchBaseTasks();
+      final response = await _api.post('/tasks/base-tasks/$taskId/complete/');
+      
+      // Обновляем локальное состояние задачи
+      final index = _tasks.indexWhere((t) => t.id == taskId);
+      if (index != -1) {
+        _tasks[index] = _tasks[index].copyWith(completed: true);
+        
+        // Пересортировываем список
+        _tasks.sort((a, b) {
+          if (a.completed != b.completed) return a.completed ? 1 : -1;
+          if (a.type != b.type) return a.type.index.compareTo(b.type.index);
+          return a.title.compareTo(b.title);
+        });
+        
+        notifyListeners();
+      }
+      
       return true;
     } catch (e) {
       _setError('Ошибка выполнения задачи: $e');
