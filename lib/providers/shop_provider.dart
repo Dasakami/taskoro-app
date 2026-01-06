@@ -112,7 +112,8 @@ class ShopProvider extends ChangeNotifier {
   }
   
   Future<void> fetchChests() async {
-    if (!_api.isAuthenticated) return;
+    _setLoading(true);
+    _setError(null);
     
     try {
       final data = await _api.get('/shop/chests/');
@@ -127,10 +128,10 @@ class ShopProvider extends ChangeNotifier {
             .map((e) => Chest.fromJson(e as Map<String, dynamic>))
             .toList();
       }
-      
-      notifyListeners();
     } catch (e) {
       _setError('Ошибка загрузки сундуков: $e');
+    } finally {
+      _setLoading(false);
     }
   }
   
@@ -185,6 +186,7 @@ class ShopProvider extends ChangeNotifier {
   
   // ===================== СУНДУКИ =====================
   
+  /// Открыть сундук
   Future<ChestOpening?> openChest(String chestId) async {
     _setLoading(true);
     _setError(null);
@@ -193,7 +195,26 @@ class ShopProvider extends ChangeNotifier {
       final data = await _api.post('/shop/chests/$chestId/open/');
       
       if (data is Map<String, dynamic>) {
-        final opening = ChestOpening.fromJson(data);
+        // Проверяем наличие поля 'opening' или создаем из корневых полей
+        ChestOpening opening;
+        
+        if (data.containsKey('opening')) {
+          opening = ChestOpening.fromJson(data['opening'] as Map<String, dynamic>);
+        } else {
+          // Создаем из корневых полей
+          opening = ChestOpening(
+            id: data['id']?.toString() ?? '',
+            chest: data.containsKey('chest') 
+                ? Chest.fromJson(data['chest'] as Map<String, dynamic>)
+                : _chests.firstWhere((c) => c.id == chestId),
+            coinsReward: data['coins_reward'] ?? 0,
+            gemsReward: data['gems_reward'] ?? 0,
+            openedAt: data.containsKey('opened_at')
+                ? DateTime.parse(data['opened_at'])
+                : DateTime.now(),
+          );
+        }
+        
         _chestOpenings.add(opening);
         notifyListeners();
         return opening;
@@ -242,7 +263,7 @@ class ShopProvider extends ChangeNotifier {
   
   /// Для совместимости со старым кодом
   void setAccessToken(String? token) {
-    // Tokenсохраняютсяautomatically в ApiService
+    // Token сохраняется automatically в ApiService
   }
   
   // ===================== ПРИВАТНЫЕ МЕТОДЫ =====================

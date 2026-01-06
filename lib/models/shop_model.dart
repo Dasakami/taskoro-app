@@ -1,4 +1,3 @@
-
 class ShopItem {
   final String id;
   final String name;
@@ -36,7 +35,7 @@ class ShopItem {
       category: json['category'] ?? '',
       currency: json['currency'] ?? 'coins',
       price: json['price'] ?? 0,
-      imageUrl: json['image_url'],
+      imageUrl: json['image_url'] ?? json['image'],
       titleText: json['title_text'],
       boostMultiplier: json['boost_multiplier']?.toDouble(),
       boostDuration: json['boost_duration'],
@@ -140,7 +139,7 @@ class Chest {
       maxCoinsReward: json['max_coins_reward'] ?? 0,
       minGemsReward: json['min_gems_reward'] ?? 0,
       maxGemsReward: json['max_gems_reward'] ?? 0,
-      imageUrl: json['image_url'],
+      imageUrl: json['image_url'] ?? json['image'],
     );
   }
 }
@@ -162,11 +161,13 @@ class ChestOpening {
 
   factory ChestOpening.fromJson(Map<String, dynamic> json) {
     return ChestOpening(
-      id: json['id'].toString(),
-      chest: Chest.fromJson(json['chest']),
+      id: json['id']?.toString() ?? '',
+      chest: Chest.fromJson(json['chest'] as Map<String, dynamic>),
       coinsReward: json['coins_reward'] ?? 0,
       gemsReward: json['gems_reward'] ?? 0,
-      openedAt: DateTime.parse(json['opened_at']),
+      openedAt: json['opened_at'] != null
+          ? DateTime.parse(json['opened_at'])
+          : DateTime.now(),
     );
   }
 }

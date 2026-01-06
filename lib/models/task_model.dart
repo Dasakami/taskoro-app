@@ -11,13 +11,11 @@ class TaskModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int? categoryId;
-  final int coins;
   final int? estimatedMinutes;
   final String? frequency;
 
   final int streak;
   final DateTime? lastCompleted;
-
   final DateTime? targetDate;
 
   TaskModel({
@@ -31,7 +29,6 @@ class TaskModel {
     required this.createdAt,
     required this.updatedAt,
     this.categoryId,
-    this.coins = 0,
     this.estimatedMinutes,
     this.frequency,
     this.streak = 0,
@@ -44,20 +41,20 @@ class TaskModel {
   bool get isDaily => type == TaskType.daily;
   bool get isOneTime => type == TaskType.oneTime;
 
-  // For backward compatibility
+  // Награды рассчитываются автоматически на основе сложности
   int get experienceReward => _getExperienceReward();
-  int get coinsReward => coins;
+  int get coinsReward => (experienceReward / 4).round();
 
   int _getExperienceReward() {
     switch (difficulty) {
       case TaskDifficulty.easy:
-        return 10;
-      case TaskDifficulty.medium:
         return 20;
+      case TaskDifficulty.medium:
+        return 40;
       case TaskDifficulty.hard:
-        return 35;
+        return 80;
       case TaskDifficulty.epic:
-        return 50;
+        return 150;
     }
   }
 
@@ -126,7 +123,6 @@ class TaskModel {
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : DateTime.now(),
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at'] as String) : DateTime.now(),
       categoryId: json['category'],
-      coins: json['coins'] ?? 0,
       estimatedMinutes: json['estimated_minutes'],
       frequency: json['frequency'] ?? '',
       streak: json['streak'] ?? 0,
@@ -145,7 +141,6 @@ class TaskModel {
       'status': _statusToString(status),
       'deadline': deadline?.toIso8601String(),
       'category': categoryId,
-      'coins': coins,
       'estimated_minutes': estimatedMinutes,
       'frequency': frequency,
       'streak': streak,
@@ -167,7 +162,6 @@ class TaskModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     int? categoryId,
-    int? coins,
     int? estimatedMinutes,
     String? frequency,
     int? streak,
@@ -185,7 +179,6 @@ class TaskModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       categoryId: categoryId ?? this.categoryId,
-      coins: coins ?? this.coins,
       estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
       frequency: frequency ?? this.frequency,
       streak: streak ?? this.streak,

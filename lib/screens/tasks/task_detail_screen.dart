@@ -25,7 +25,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _coinsController = TextEditingController();
   final _estimatedMinutesController = TextEditingController();
 
   TaskType _selectedType = TaskType.oneTime;
@@ -47,7 +46,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _coinsController.dispose();
     _estimatedMinutesController.dispose();
     super.dispose();
   }
@@ -57,7 +55,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       final task = widget.task!;
       _titleController.text = task.title;
       _descriptionController.text = task.description ?? '';
-      _coinsController.text = task.coins.toString();
       _estimatedMinutesController.text = task.estimatedMinutes?.toString() ?? '';
       _selectedType = task.type;
       _selectedDifficulty = task.difficulty;
@@ -67,7 +64,19 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       _selectedCategoryId = task.categoryId;
     } else {
       _selectedType = widget.taskType ?? TaskType.oneTime;
-      _coinsController.text = '10';
+    }
+  }
+
+  int _getExperienceForDifficulty(TaskDifficulty difficulty) {
+    switch (difficulty) {
+      case TaskDifficulty.easy:
+        return 20;
+      case TaskDifficulty.medium:
+        return 40;
+      case TaskDifficulty.hard:
+        return 80;
+      case TaskDifficulty.epic:
+        return 150;
     }
   }
 
@@ -117,7 +126,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       createdAt: widget.task?.createdAt ?? now,
       updatedAt: now,
       categoryId: _selectedCategoryId,
-      coins: int.tryParse(_coinsController.text) ?? 0,
       estimatedMinutes: int.tryParse(_estimatedMinutesController.text),
       targetDate: _selectedTargetDate,
       streak: widget.task?.streak ?? 0,
@@ -310,41 +318,62 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _coinsController,
-                            decoration: const InputDecoration(
-                              labelText: 'Монеты',
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.monetization_on),
+                    // Награды рассчитываются автоматически
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Награды за выполнение:',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
                             ),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Введите количество монет';
-                              }
-                              if (int.tryParse(value) == null) {
-                                return 'Введите число';
-                              }
-                              return null;
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _estimatedMinutesController,
-                            decoration: const InputDecoration(
-                              labelText: 'Время (мин)',
-                              border: OutlineInputBorder(),
-                              prefixIcon: Icon(Icons.timer),
-                            ),
-                            keyboardType: TextInputType.number,
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_getExperienceForDifficulty(_selectedDifficulty)} XP',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 24),
+                              const Icon(Icons.monetization_on, color: AppColors.accentPrimary, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${(_getExperienceForDifficulty(_selectedDifficulty) / 4).round()} монет',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _estimatedMinutesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Предполагаемое время (мин)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.timer),
+                      ),
+                      keyboardType: TextInputType.number,
                     ),
                   ],
                 ),

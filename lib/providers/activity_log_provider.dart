@@ -8,12 +8,18 @@ class ActivityLogProvider extends ChangeNotifier {
   List<ActivityLog> _logs = [];
   bool _isLoading = false;
   String? _error;
-  int? _selectedType;
+  String _selectedType = '';
   
   List<ActivityLog> get logs => _logs;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  int? get selectedType => _selectedType;
+  String get selectedType => _selectedType;
+  
+  /// Установить фильтр по типу активности
+  void setFilter(String type) {
+    _selectedType = type;
+    notifyListeners();
+  }
   
   Future<void> fetchActivityLogs() async {
     if (!_api.isAuthenticated) return;
@@ -22,7 +28,13 @@ class ActivityLogProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final data = await _api.get('/history/activity-log/');
+      // Если выбран фильтр, добавляем его в запрос
+      String endpoint = '/history/activity-log/';
+      if (_selectedType.isNotEmpty) {
+        endpoint += '?type=$_selectedType';
+      }
+      
+      final data = await _api.get(endpoint);
       
       if (data is List) {
         _logs = data.map((e) => ActivityLog.fromJson(e as Map<String, dynamic>)).toList();
@@ -44,6 +56,7 @@ class ActivityLogProvider extends ChangeNotifier {
     _logs.clear();
     _error = null;
     _isLoading = false;
+    _selectedType = '';
     notifyListeners();
   }
   

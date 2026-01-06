@@ -145,7 +145,7 @@ class FriendsProvider extends ChangeNotifier {
       // Загружаем информацию о пользователях для полученных запросов
       for (var i = 0; i < _receivedRequests.length; i++) {
         final req = _receivedRequests[i];
-        if (req.username == 'Unknown' && req.userId != 0) {
+        if (req.username == 'Неизвестный' && req.userId != 0) {
           try {
             final user = await fetchUserProfile(req.userId);
             _receivedRequests[i] = req.copyWith(
@@ -161,7 +161,7 @@ class FriendsProvider extends ChangeNotifier {
       // Загружаем информацию о пользователях для отправленных запросов
       for (var i = 0; i < _sentRequests.length; i++) {
         final req = _sentRequests[i];
-        if (req.username == 'Unknown' && req.userId != 0) {
+        if (req.username == 'Неизвестный' && req.userId != 0) {
           try {
             final user = await fetchUserProfile(req.userId);
             _sentRequests[i] = req.copyWith(

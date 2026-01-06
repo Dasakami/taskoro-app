@@ -51,23 +51,18 @@ class UserProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      final response = await _api.login(username, password);
+      // Логин возвращает токены и user_id
+      final data = await _api.login(username, password);
       
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final userId = data['user_id'] as int?;
-        
-        await _api.setTokens(
-          data['access'],
-          data['refresh'],
-          userId: userId,
-        );
-        
-        await _loadUserData();
-        notifyListeners();
-      } else {
-        throw ApiException('Неверные учетные данные', statusCode: response.statusCode);
-      }
+      await _api.setTokens(
+        data['access'],
+        data['refresh'],
+        userId: data['user_id'] as int?,
+      );
+      
+      // Загрузить данные пользователя
+      await _loadUserData();
+      notifyListeners();
     } catch (e) {
       _setError(e.toString());
       rethrow;
@@ -92,7 +87,7 @@ class UserProvider extends ChangeNotifier {
         'password': password,
         're_password': password,
         'class_id': classId,
-      });
+      }, auth: false);
       
       if (response is Map<String, dynamic>) {
         await _api.setTokens(
@@ -133,25 +128,33 @@ class UserProvider extends ChangeNotifier {
     }
     
     try {
+      // Загружаем данные пользователя и главной страницы параллельно
       await Future.wait([
         fetchUserData(),
         fetchMainData(),
       ]);
     } catch (e) {
       debugPrint('Ошибка загрузки данных: $e');
-      await logout();
+      // Не выходим автоматически, если ошибка не связана с авторизацией
+      if (e.toString().contains('401') || e.toString().contains('Refresh token')) {
+        await logout();
+      }
     }
   }
   
-  /// Обновить данные пользователя со всех экранов
+  /// Обновить данные пользователя
   Future<void> refreshUserData() async {
     if (!_api.isAuthenticated) return;
     await _loadUserData();
   }
   
-  /// Alias для refreshUserData (используется в старом коде)
-  Future<void> refreshMainData() => refreshUserData();
+  /// Обновить только данные главной страницы
+  Future<void> refreshMainData() async {
+    if (!_api.isAuthenticated) return;
+    await fetchMainData();
+  }
   
+  /// Получить профиль пользователя из /users/me/
   Future<void> fetchUserData() async {
     try {
       final data = await _api.get('/users/me/');
@@ -167,13 +170,32 @@ class UserProvider extends ChangeNotifier {
     }
   }
   
+  /// Получить данные главной страницы из /main/
   Future<void> fetchMainData() async {
     try {
-      final data = await _api.get('/users/me/edit/') as Map<String, dynamic>?;
+      final data = await _api.get('/main/') as Map<String, dynamic>?;
       if (data != null) {
+        // Обновляем профиль если есть
+        if (data['profile'] != null) {
+          final profileData = data['profile'] as Map<String, dynamic>;
+          if (_user != null) {
+            _user = _user!.copyWith(
+              level: profileData['level'] as int?,
+              experience: profileData['experience'] as int?,
+              experienceNeeded: profileData['experience_needed'] as int?,
+              coins: profileData['coins'] as int?,
+              gems: profileData['gems'] as int?,
+              streak: profileData['streak'] as int?,
+            );
+          }
+        }
+        
+        // Дневная миссия
         if (data['daily_mission'] != null) {
           _dailyMission = DailyMission.fromJson(data['daily_mission']);
         }
+        
+        // Мотивация
         if (data['daily_motivation'] != null) {
           _dailyMotivation = DailyMotivation.fromJson(data['daily_motivation']);
         }
@@ -185,12 +207,13 @@ class UserProvider extends ChangeNotifier {
     }
   }
   
+  /// Получить список классов персонажей
   Future<void> fetchCharacterClasses() async {
     _isLoadingClasses = true;
     notifyListeners();
     
     try {
-      final data = await _api.get('/users/character-classes/');
+      final data = await _api.get('/users/character-classes/', auth: false);
       final classList = (data is Map ? data['classes'] as List? : data as List?) ?? [];
       _characterClasses = classList
           .map((e) => CharacterClassModel.fromJson(e as Map<String, dynamic>))
@@ -204,6 +227,7 @@ class UserProvider extends ChangeNotifier {
     }
   }
   
+  /// Обновить профиль (только для страницы редактирования)
   Future<void> updateProfile({
     required String username,
     required String bio,
@@ -214,20 +238,15 @@ class UserProvider extends ChangeNotifier {
     _setError(null);
     
     try {
-      dynamic response;
-      
-      if (avatarFilePath != null) {
-        // Мультичастный запрос с файлом
-        response = await _api.patch(
-          '/users/me/edit/',
-          body: {'username': username, 'bio': bio},
-        );
-      } else {
-        response = await _api.patch(
-          '/users/me/edit/',
-          body: {'username': username, 'bio': bio},
-        );
-      }
+      // PATCH запрос к /users/me/edit/
+      final response = await _api.patch(
+        '/users/me/edit/',
+        body: {
+          'username': username,
+          'bio': bio,
+          if (avatarUrl != null) 'avatar': avatarUrl,
+        },
+      );
       
       if (response is Map<String, dynamic>) {
         _user = UserModel.fromJson(response);

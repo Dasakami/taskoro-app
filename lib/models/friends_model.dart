@@ -68,7 +68,8 @@ class FriendRequest {
       final user = container['user'];
       username = user is String ? user : 'Неизвестный';
       avatar = container['avatar'] as String?;
-      userId = container['id'] as int? ?? 0;
+      // ИСПРАВЛЕНО: userId берем из profile.id, а не из container.id
+      userId = container['user_id'] as int? ?? container['id'] as int? ?? 0;
       level = container['level'] as int? ?? 1;
     }
 

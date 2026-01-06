@@ -27,7 +27,7 @@ class TaskCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -57,7 +57,7 @@ class TaskCard extends StatelessWidget {
                 Text(
                   task.description!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: task.isCompleted ? AppColors.textSecondary : AppColors.textSecondary,
+                    color: AppColors.textSecondary,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -81,12 +81,18 @@ class TaskCard extends StatelessWidget {
                     _getTypeLabel(task.type),
                     _getTypeColor(task.type),
                   ),
-                  if (task.coins > 0)
-                    _buildInfoChip(
-                      Icons.monetization_on,
-                      '${task.coins}',
-                      AppColors.accentPrimary,
-                    ),
+                  // Награды
+                  _buildInfoChip(
+                    Icons.psychology,
+                    '${task.experienceReward} XP',
+                    Colors.amber,
+                  ),
+                  _buildInfoChip(
+                    Icons.monetization_on,
+                    '${task.coinsReward}',
+                    AppColors.accentPrimary,
+                  ),
+                  // Серия (если привычка)
                   if (task.streak > 0)
                     _buildInfoChip(
                       Icons.local_fire_department,
