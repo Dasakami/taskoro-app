@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 /// Исключение API
 class ApiException implements Exception {
@@ -54,14 +55,11 @@ class ApiService {
       _tokenExpiry = DateTime.tryParse(expiryStr);
     }
     
-    // Проверяем, не истек ли токен
     if (_tokenExpiry != null && DateTime.now().isAfter(_tokenExpiry!)) {
-      // Токен истек, попробуем обновить
       if (_refreshToken != null) {
         try {
           await _refreshAccessToken();
         } catch (e) {
-          // Если не удалось обновить, очищаем токены
           await clearTokens();
         }
       }
@@ -75,7 +73,6 @@ class ApiService {
     _refreshToken = refreshToken;
     if (userId != null) _userId = userId;
     
-    // Access token живет 15 минут по умолчанию
     _tokenExpiry = DateTime.now().add(const Duration(minutes: 14));
     
     final prefs = await SharedPreferences.getInstance();
@@ -107,7 +104,6 @@ class ApiService {
   int? get userId => _userId;
   bool get isAuthenticated => _accessToken != null && _refreshToken != null;
   
-  /// Проверить, не истек ли токен (с запасом 1 минута)
   bool get _isTokenExpired {
     if (_tokenExpiry == null) return false;
     return DateTime.now().isAfter(_tokenExpiry!.subtract(const Duration(minutes: 1)));
@@ -126,32 +122,71 @@ class ApiService {
   
   // ===================== ОБРАБОТКА ЗАПРОСОВ =====================
   
-  /// Выполнить GET запрос
   Future<dynamic> get(String path, {bool auth = true}) async {
     return await _makeRequest('GET', path, auth: auth);
   }
   
-  /// Выполнить POST запрос
   Future<dynamic> post(String path, {dynamic body, bool auth = true}) async {
     return await _makeRequest('POST', path, body: body, auth: auth);
   }
   
-  /// Выполнить PUT запрос
   Future<dynamic> put(String path, {dynamic body, bool auth = true}) async {
     return await _makeRequest('PUT', path, body: body, auth: auth);
   }
   
-  /// Выполнить PATCH запрос
   Future<dynamic> patch(String path, {dynamic body, bool auth = true}) async {
     return await _makeRequest('PATCH', path, body: body, auth: auth);
   }
+
+  Future<Map<String, dynamic>> patchMultipart(
+  String path, {
+  required Map<String, String> fields,
+  File? file,
+  String fileFieldName = 'avatar',
+}) async {
+  if (_isTokenExpired && _refreshToken != null) {
+    await _ensureValidToken();
+  }
+
+  final uri = Uri.parse('$baseUrl$path');
+  final request = http.MultipartRequest('PATCH', uri);
+
+  // headers
+  if (_accessToken != null) {
+    request.headers['Authorization'] = 'Bearer $_accessToken';
+  }
+
+  // text fields
+  request.fields.addAll(fields);
+
+  // file
+  if (file != null) {
+    request.files.add(
+      await http.MultipartFile.fromPath(fileFieldName, file.path),
+    );
+  }
+
+  final streamedResponse = await request.send();
+  final response = await http.Response.fromStream(streamedResponse);
+
+  if (response.statusCode == 401 && _refreshToken != null) {
+    await _ensureValidToken();
+    return await patchMultipart(
+      path,
+      fields: fields,
+      file: file,
+      fileFieldName: fileFieldName,
+    );
+  }
+
+  return _decodeResponse(response) as Map<String, dynamic>;
+}
+
   
-  /// Выполнить DELETE запрос
   Future<dynamic> delete(String path, {bool auth = true}) async {
     return await _makeRequest('DELETE', path, auth: auth);
   }
   
-  /// Логин (специальный метод)
   Future<dynamic> login(String username, String password) async {
     final url = Uri.parse('$authUrl/api/token/');
     final response = await http.post(
@@ -164,13 +199,11 @@ class ApiService {
   
   // ===================== ВНУТРЕННИЕ МЕТОДЫ =====================
   
-  /// Универсальный метод для выполнения запросов
   Future<dynamic> _makeRequest(
     String method,
     String path,
     {dynamic body, bool auth = true}
   ) async {
-    // Проверяем токен перед запросом
     if (auth && _isTokenExpired && _refreshToken != null) {
       await _ensureValidToken();
     }
@@ -201,10 +234,8 @@ class ApiService {
           throw ApiException('Неподдерживаемый метод: $method');
       }
       
-      // Если получили 401, пробуем обновить токен
       if (response.statusCode == 401 && auth && _refreshToken != null) {
         await _ensureValidToken();
-        // Повторяем запрос с новым токеном
         return await _makeRequest(method, path, body: body, auth: auth);
       }
       
@@ -214,10 +245,8 @@ class ApiService {
     }
   }
   
-  /// Гарантировать валидность токена
   Future<void> _ensureValidToken() async {
     if (_isRefreshing) {
-      // Если уже обновляем, ждем завершения
       final completer = Completer<void>();
       _pendingRequests.add(completer);
       await completer.future;
@@ -227,13 +256,11 @@ class ApiService {
     _isRefreshing = true;
     try {
       await _refreshAccessToken();
-      // Уведомляем ожидающие запросы
       for (final completer in _pendingRequests) {
         completer.complete();
       }
       _pendingRequests.clear();
     } catch (e) {
-      // Уведомляем об ошибке
       for (final completer in _pendingRequests) {
         completer.completeError(e);
       }
@@ -244,7 +271,6 @@ class ApiService {
     }
   }
   
-  /// Обновить access token используя refresh token
   Future<void> _refreshAccessToken() async {
     if (_refreshToken == null) {
       throw ApiException('Refresh token отсутствует');
@@ -261,7 +287,6 @@ class ApiService {
         final data = jsonDecode(response.body);
         final newAccessToken = data['access'] as String;
         
-        // Обновляем только access token, refresh остается прежним
         _accessToken = newAccessToken;
         _tokenExpiry = DateTime.now().add(const Duration(minutes: 14));
         
@@ -269,7 +294,6 @@ class ApiService {
         await prefs.setString(_accessTokenKey, newAccessToken);
         await prefs.setString(_tokenExpiryKey, _tokenExpiry!.toIso8601String());
       } else if (response.statusCode == 401) {
-        // Refresh token истек
         await clearTokens();
         throw ApiException('Refresh token истек, требуется повторная авторизация');
       } else {
@@ -281,7 +305,6 @@ class ApiService {
     }
   }
   
-  /// Декодировать ответ сервера
   dynamic _decodeResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return {};

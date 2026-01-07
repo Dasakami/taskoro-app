@@ -6,7 +6,7 @@ class BaseTaskModel {
   final String description;
   final int xpReward;
   final BaseTaskType type;
-  bool completed;
+  final bool completed;
 
   BaseTaskModel({
     required this.id,
@@ -43,6 +43,23 @@ class BaseTaskModel {
     );
   }
   
-  /// Alias для совместимости
+  BaseTaskModel copyWith({
+    int? id,
+    String? title,
+    String? description,
+    int? xpReward,
+    BaseTaskType? type,
+    bool? completed,
+  }) {
+    return BaseTaskModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      xpReward: xpReward ?? this.xpReward,
+      type: type ?? this.type,
+      completed: completed ?? this.completed,
+    );
+  }
+  
   bool get isCompleted => completed;
 }

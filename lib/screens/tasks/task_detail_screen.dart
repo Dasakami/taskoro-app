@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../models/task_model.dart';
-import '../../providers/tasks_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/magic_card.dart';
 
@@ -99,13 +98,28 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
 
     if (picked != null) {
-      setState(() {
-        if (isDeadline) {
-          _selectedDeadline = picked;
-        } else {
-          _selectedTargetDate = picked;
+      if (isDeadline) {
+        // Для deadline добавляем время
+        final TimeOfDay? time = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+        );
+        if (time != null) {
+          setState(() {
+            _selectedDeadline = DateTime(
+              picked.year,
+              picked.month,
+              picked.day,
+              time.hour,
+              time.minute,
+            );
+          });
         }
-      });
+      } else {
+        setState(() {
+          _selectedTargetDate = picked;
+        });
+      }
     }
   }
 
@@ -113,6 +127,32 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final now = DateTime.now();
+    
+    // Создаем Map для отправки на сервер
+    final taskData = {
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim().isEmpty
+          ? ''
+          : _descriptionController.text.trim(),
+      'task_type': _taskTypeToString(_selectedType),
+      'difficulty': _difficultyToString(_selectedDifficulty),
+      'status': _statusToString(_selectedStatus),
+      'estimated_minutes': int.tryParse(_estimatedMinutesController.text),
+    };
+    
+    // Добавляем опциональные поля
+    if (_selectedDeadline != null && _selectedType == TaskType.oneTime) {
+      taskData['deadline'] = _selectedDeadline!.toIso8601String();
+    }
+    
+    if (_selectedTargetDate != null && _selectedType == TaskType.daily) {
+      taskData['target_date'] = DateFormat('yyyy-MM-dd').format(_selectedTargetDate!);
+    }
+    
+    if (_selectedCategoryId != null) {
+      taskData['category'] = _selectedCategoryId;
+    }
+
     final task = TaskModel(
       id: widget.task?.id,
       title: _titleController.text.trim(),
@@ -133,6 +173,43 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
 
     widget.onSave(task);
+  }
+
+  String _taskTypeToString(TaskType type) {
+    switch (type) {
+      case TaskType.oneTime:
+        return 'one_time';
+      case TaskType.habit:
+        return 'habit';
+      case TaskType.daily:
+        return 'daily';
+    }
+  }
+
+  String _difficultyToString(TaskDifficulty difficulty) {
+    switch (difficulty) {
+      case TaskDifficulty.easy:
+        return 'easy';
+      case TaskDifficulty.medium:
+        return 'medium';
+      case TaskDifficulty.hard:
+        return 'hard';
+      case TaskDifficulty.epic:
+        return 'epic';
+    }
+  }
+
+  String _statusToString(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.notStarted:
+        return 'not_started';
+      case TaskStatus.inProgress:
+        return 'in_progress';
+      case TaskStatus.completed:
+        return 'completed';
+      case TaskStatus.paused:
+        return 'paused';
+    }
   }
 
   @override
@@ -318,7 +395,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Награды рассчитываются автоматически
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -395,22 +471,21 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Deadline
                     if (_selectedType == TaskType.oneTime)
                       _buildDateSelector(
                         'Дедлайн',
                         _selectedDeadline,
-                            () => _selectDate(context, true),
+                        () => _selectDate(context, true),
                         Icons.event,
+                        showTime: true,
                       ),
 
-                    // Target Date for daily tasks
                     if (_selectedType == TaskType.daily) ...[
                       if (_selectedType == TaskType.oneTime) const SizedBox(height: 16),
                       _buildDateSelector(
                         'Целевая дата',
                         _selectedTargetDate,
-                            () => _selectDate(context, false),
+                        () => _selectDate(context, false),
                         Icons.flag,
                       ),
                     ],
@@ -426,7 +501,22 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  Widget _buildDateSelector(String label, DateTime? date, VoidCallback onTap, IconData icon) {
+  Widget _buildDateSelector(
+    String label,
+    DateTime? date,
+    VoidCallback onTap,
+    IconData icon,
+    {bool showTime = false}
+  ) {
+    String dateText = 'Не выбрано';
+    if (date != null) {
+      if (showTime) {
+        dateText = DateFormat('dd.MM.yyyy HH:mm').format(date);
+      } else {
+        dateText = DateFormat('dd.MM.yyyy').format(date);
+      }
+    }
+
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -450,9 +540,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                 ),
                 Text(
-                  date != null
-                      ? '${date.day}.${date.month}.${date.year}'
-                      : 'Не выбрано',
+                  dateText,
                   style: const TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 16,

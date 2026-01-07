@@ -14,10 +14,14 @@ class BaseTaskProvider extends ChangeNotifier {
   String? get error => _error;
   bool get loading => _isLoading;
   
-  /// Getters для совместимости
-  List<BaseTaskModel> get oneTimers => _tasks;
-  List<BaseTaskModel> get dailies => _tasks;
-  List<BaseTaskModel> get habits => _tasks;
+  /// Фильтрация по типу
+  List<BaseTaskModel> get oneTimers => _tasks.where((t) => t.type == BaseTaskType.oneTime).toList();
+  List<BaseTaskModel> get dailies => _tasks.where((t) => t.type == BaseTaskType.daily).toList();
+  List<BaseTaskModel> get habits => _tasks.where((t) => t.type == BaseTaskType.habit).toList();
+  
+  /// Фильтрация выполненных и невыполненных
+  List<BaseTaskModel> get completedTasks => _tasks.where((t) => t.completed).toList();
+  List<BaseTaskModel> get incompleteTasks => _tasks.where((t) => !t.completed).toList();
   
   Future<void> fetchBaseTasks() async {
     if (!_api.isAuthenticated) return;
@@ -30,9 +34,18 @@ class BaseTaskProvider extends ChangeNotifier {
       
       if (data is List) {
         _tasks = data.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
+        // Сортируем: невыполненные сначала
+        _tasks.sort((a, b) {
+          if (a.completed == b.completed) return 0;
+          return a.completed ? 1 : -1;
+        });
       } else if (data is Map) {
         final list = data['tasks'] as List? ?? [];
         _tasks = list.map((e) => BaseTaskModel.fromJson(e as Map<String, dynamic>)).toList();
+        _tasks.sort((a, b) {
+          if (a.completed == b.completed) return 0;
+          return a.completed ? 1 : -1;
+        });
       }
     } catch (e) {
       _setError('Ошибка загрузки базовых задач: $e');
@@ -43,8 +56,22 @@ class BaseTaskProvider extends ChangeNotifier {
   
   Future<bool> completeBaseTask(int taskId) async {
     try {
-      await _api.post('/tasks/base-tasks/$taskId/complete/');
-      await fetchBaseTasks();
+      final response = await _api.post('/tasks/base-tasks/$taskId/complete/');
+      
+      // Обновляем локальный статус задачи
+      if (response is Map && response['completed'] == true) {
+        final index = _tasks.indexWhere((t) => t.id == taskId);
+        if (index != -1) {
+          _tasks[index] = _tasks[index].copyWith(completed: true);
+          // Пересортируем
+          _tasks.sort((a, b) {
+            if (a.completed == b.completed) return 0;
+            return a.completed ? 1 : -1;
+          });
+          notifyListeners();
+        }
+      }
+      
       return true;
     } catch (e) {
       _setError('Ошибка выполнения задачи: $e');
@@ -52,7 +79,6 @@ class BaseTaskProvider extends ChangeNotifier {
     }
   }
   
-  /// Alias для completeBaseTask
   Future<bool> complete(dynamic taskIdOrModel) {
     if (taskIdOrModel is int) {
       return completeBaseTask(taskIdOrModel);
@@ -79,3 +105,4 @@ class BaseTaskProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
+

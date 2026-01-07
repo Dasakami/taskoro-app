@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'dart:io';
 
 import '../models/character_class_model.dart';
 import '../models/user_model.dart';
@@ -226,43 +227,47 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
-  /// Обновить профиль (только для страницы редактирования)
   Future<void> updateProfile({
-    required String username,
-    required String bio,
-    String? avatarFilePath,
-    String? avatarUrl,
-  }) async {
-    _setLoading(true);
-    _setError(null);
-    
-    try {
-      // PATCH запрос к /users/me/edit/
-      final response = await _api.patch(
+  required String username,
+  required String bio,
+  String? avatarFilePath,
+}) async {
+  _setLoading(true);
+  _setError(null);
+
+  try {
+    Map<String, dynamic> data;
+
+    if (avatarFilePath != null) {
+      data = await _api.patchMultipart(
+        '/users/me/edit/',
+        fields: {
+          'username': username,
+          'bio': bio,
+        },
+        file: File(avatarFilePath),
+      );
+    } else {
+      data = await _api.patch(
         '/users/me/edit/',
         body: {
           'username': username,
           'bio': bio,
-          if (avatarUrl != null) 'avatar': avatarUrl,
         },
-      );
-      
-      if (response is Map<String, dynamic>) {
-        _user = UserModel.fromJson(response);
-        _error = null;
-        notifyListeners();
-      } else {
-        throw ApiException('Ошибка обновления профиля');
-      }
-    } catch (e) {
-      _setError('Ошибка обновления профиля: $e');
-      rethrow;
-    } finally {
-      _setLoading(false);
+      ) as Map<String, dynamic>;
     }
+
+    _user = UserModel.fromJson(data);
+    _error = null;
+    notifyListeners();
+  } catch (e) {
+    _setError('Ошибка обновления профиля: $e');
+    rethrow;
+  } finally {
+    _setLoading(false);
   }
-  
+}
+
   // ===================== ОБНОВЛЕНИЕ ДАННЫХ ЛОКАЛЬНО =====================
   
   void updateExperience(int amount) {
