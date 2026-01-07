@@ -147,8 +147,11 @@ class TasksProvider extends ChangeNotifier {
       
       if (data is Map<String, dynamic>) {
         final createdTask = TaskModel.fromJson(data);
+        
         _tasks.add(createdTask);
         notifyListeners();
+        print(taskData);
+
         return createdTask;
       } else {
         throw ApiException('Ошибка создания задачи');
@@ -173,7 +176,7 @@ class TasksProvider extends ChangeNotifier {
     
     try {
       final data = await _api.put(
-        '/tasks/${task.id}/',
+        '/tasks/tasks/${task.id}/',
         body: task.toJson(),
       );
       
