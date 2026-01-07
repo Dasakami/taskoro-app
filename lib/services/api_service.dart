@@ -19,7 +19,6 @@ class ApiException implements Exception {
 class ApiService {
   // API конфигурация
   static const String baseUrl = 'http://10.77.141.53:8000/api';
-  static const String authUrl = 'http://10.77.141.53:8000';
   
   // Ключи хранилища
   static const String _accessTokenKey = 'access_token';
@@ -139,62 +138,64 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> patchMultipart(
-  String path, {
-  required Map<String, String> fields,
-  File? file,
-  String fileFieldName = 'avatar',
-}) async {
-  if (_isTokenExpired && _refreshToken != null) {
-    await _ensureValidToken();
+    String path, {
+    required Map<String, String> fields,
+    File? file,
+    String fileFieldName = 'avatar',
+  }) async {
+    if (_isTokenExpired && _refreshToken != null) {
+      await _ensureValidToken();
+    }
+
+    final uri = Uri.parse('$baseUrl$path');
+    final request = http.MultipartRequest('PATCH', uri);
+
+    // headers
+    if (_accessToken != null) {
+      request.headers['Authorization'] = 'Bearer $_accessToken';
+    }
+
+    // text fields
+    request.fields.addAll(fields);
+
+    // file
+    if (file != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(fileFieldName, file.path),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 401 && _refreshToken != null) {
+      await _ensureValidToken();
+      return await patchMultipart(
+        path,
+        fields: fields,
+        file: file,
+        fileFieldName: fileFieldName,
+      );
+    }
+
+    return _decodeResponse(response) as Map<String, dynamic>;
   }
-
-  final uri = Uri.parse('$baseUrl$path');
-  final request = http.MultipartRequest('PATCH', uri);
-
-  // headers
-  if (_accessToken != null) {
-    request.headers['Authorization'] = 'Bearer $_accessToken';
-  }
-
-  // text fields
-  request.fields.addAll(fields);
-
-  // file
-  if (file != null) {
-    request.files.add(
-      await http.MultipartFile.fromPath(fileFieldName, file.path),
-    );
-  }
-
-  final streamedResponse = await request.send();
-  final response = await http.Response.fromStream(streamedResponse);
-
-  if (response.statusCode == 401 && _refreshToken != null) {
-    await _ensureValidToken();
-    return await patchMultipart(
-      path,
-      fields: fields,
-      file: file,
-      fileFieldName: fileFieldName,
-    );
-  }
-
-  return _decodeResponse(response) as Map<String, dynamic>;
-}
-
   
   Future<dynamic> delete(String path, {bool auth = true}) async {
     return await _makeRequest('DELETE', path, auth: auth);
   }
   
-  Future<dynamic> login(String username, String password) async {
-    final url = Uri.parse('$authUrl/api/token/');
+  // ===================== АВТОРИЗАЦИЯ =====================
+  
+  /// Логин через /api/users/login/
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    final url = Uri.parse('$baseUrl/users/login/');  // ✅ ИСПРАВЛЕНО!
     final response = await http.post(
       url,
       headers: _headers,
       body: jsonEncode({'username': username, 'password': password}),
     );
-    return _decodeResponse(response);
+    return _decodeResponse(response) as Map<String, dynamic>;
   }
   
   // ===================== ВНУТРЕННИЕ МЕТОДЫ =====================
@@ -278,7 +279,7 @@ class ApiService {
     
     try {
       final response = await http.post(
-        Uri.parse('$authUrl/api/token/refresh/'),
+        Uri.parse('$baseUrl/token/refresh/'),  // ✅ ИСПРАВЛЕНО!
         headers: _headers,
         body: jsonEncode({'refresh': _refreshToken}),
       );
